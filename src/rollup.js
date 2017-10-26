@@ -54,17 +54,23 @@ const defaultPlugins = () => [
 class Rollup {
 
   constructor(config) {
+    if (!config) {
+      throw new Error('Illegal constructor arguments.')
+    }
     this.config = config
   }
 
-  // normalize config for rollup engine input, output configs.
-  // {
-  //  input: 'path/foo.js',
-  //  targets: [
-  //    { [ outputConfig ... ] }, ...
-  //  ]
-  // }
-  normalizeConfig(entry) {
+  /**
+   * Normalize config for rollup engine input, output configs.
+   *
+   * {
+   *  input: 'path/foo.js',
+   *  targets: [
+   *    { [ outputConfig ... ] }, ...
+   *  ]
+   * }
+   */
+  _normalizeEntry(entry) {
     return {
       input: {
         input: entry.input,
@@ -82,7 +88,7 @@ class Rollup {
     mkdirp.sync(destDir)
 
     const tasks = entry.map(async (task) => {
-      const { input, targets } = this.normalizeConfig(task)
+      const { input, targets } = this._normalizeEntry(task)
 
       // create a bundle
       let bundle = await rollup.rollup(input)
