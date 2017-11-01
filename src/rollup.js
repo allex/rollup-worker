@@ -11,9 +11,9 @@
 
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 const rollup = require('rollup')
 const uglify = require('uglify-js')
-const babel = require('rollup-plugin-babel')
 const commonjs = require('rollup-plugin-commonjs')
 const node = require('rollup-plugin-node-resolve')
 const mkdirp = require('mkdirp')
@@ -43,13 +43,25 @@ function blue (str) {
 
 const defaultPlugins = () => [
   node({ jsnext: true, browser: true, module: true, main: true })
-  , babel({
-    babelrc: true,
-    runtimeHelpers: true,
-    exclude: 'node_modules/**'
-  })
   , commonjs()
 ]
+
+const uglifyjs = (code, options = {}) => {
+  return uglify.minify(code, Object.assign({
+    output: {
+      comments: function (n, c) {
+        /*
+        IMPORTANT: Please preserve 3rd-party library license info,
+        inspired from @allex/amd-build-worker/config/util.js
+        */
+        var text = c.value, type = c.type;
+        if (type == 'comment2') {
+          return /^!|@preserve|@license|@cc_on|MIT/i.test(text)
+        }
+      }
+    }
+  }, options))
+}
 
 class Rollup {
 
@@ -99,33 +111,40 @@ class Rollup {
         if (dest) {
           dest = path.resolve(destDir, dest)
           output.file = dest
+          if (/\.min\./.test(path.basename(dest))) {
+            minimize = true
+          }
         }
 
         // generate code and a sourcemap
         const { code, map } = await bundle.generate(output)
 
         if (!minimize) {
-          // pipe bundle result to dest file
+          // write bundle result first
           await write(dest, code, bundle)
         }
 
-        if (minimize || !['es', 'cjs'].includes(output.format)) {
-          // generate a *.min.js
-          let minify = uglify.minify(code, {
-            output: {
-              comments: function (n, c) {
-                /*
-                IMPORTANT: Please preserve 3rd-party library license info,
-                inspired from @allex/amd-build-worker/config/util.js
-                */
-                var text = c.value, type = c.type;
-                if (type == 'comment2') {
-                  return /^!|@preserve|@license|@cc_on|MIT/i.test(text)
-                }
-              }
-            }
-          })
-          await write(path.join(path.dirname(dest), `${path.basename(dest, '.js')}.min.js`), minify.code, bundle)
+        if (['es', 'cjs'].includes(output.format)) {
+          minimize = minimize || { ext: '.min' }
+        }
+
+        if (minimize) {
+          let minify = uglifyjs(code)
+          let ext = minimize.ext
+
+          // generate a extra minimize file (*.min.js)
+          if (ext) {
+            ext = ext.charAt(0) === '.' ? ext : `.${ext}`
+            dest = path.join(path.dirname(dest), `${path.basename(dest, '.js')}${ext}.js`)
+          }
+
+          let s = minify.code, banner = output.banner
+          if (banner && s.substring(0, banner.length) !== banner) {
+            s = output.banner + s
+          }
+
+          // write minify
+          await write(dest, s, bundle)
         }
 
         return bundle
