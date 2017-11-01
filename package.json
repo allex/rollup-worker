@@ -1,6 +1,6 @@
 {
   "name": "rollup-worker",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Rollup worker for multiple bundle with customize distributes.",
   "main": "src/rollup.js",
   "repository": {

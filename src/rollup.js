@@ -82,12 +82,11 @@ class Rollup {
    */
   _normalizeEntry (entry) {
     return {
-      input: {
-        input: entry.input,
+      input: Object.assign(entry, {
         plugins: [
           ...(entry.plugins || []), ...defaultPlugins()
         ]
-      },
+      }),
       targets: entry.targets.map(v => v)
     }
   }
@@ -122,7 +121,7 @@ class Rollup {
           await write(dest, code, bundle)
         }
 
-        if (['es', 'cjs'].includes(output.format)) {
+        if (!['es', 'cjs'].includes(output.format)) {
           minimize = minimize || { ext: '.min' }
         }
 
