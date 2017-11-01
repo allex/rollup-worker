@@ -7,6 +7,14 @@
     "type": "git",
     "url": "https://github.com/allex/rollup-worker.git"
   },
+  "keywords": [
+    "rollup",
+    "bundle",
+    "multiple"
+  ],
+  "bin": {
+    "rollup-bundle": "./bin/cli.js"
+  },
   "scripts": {
     "test": "standard"
   },

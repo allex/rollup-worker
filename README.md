@@ -4,10 +4,12 @@ Rollup worker for multiple bundle with customize distributes.
 
 ## Installation
 
-### NPM install
+```bash
+$
 
-```sh
 npm i rollup-worker
+
+rollup-bundle --config <CONFIG_FILE.js>
 ```
 
 ## Usage
@@ -67,7 +69,7 @@ const Rollup = require('rollup-worker')
 const config = require('./.fssrc.js')
 
 const worker = new Rollup(config.rollup)
-worker.build()
+worker.build().then(err => console.error(err))
 ```
 
 ## License

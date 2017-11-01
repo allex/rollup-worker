@@ -11,14 +11,13 @@
 
 const fs = require('fs')
 const path = require('path')
-const os = require('os')
 const rollup = require('rollup')
 const uglify = require('uglify-js')
 const commonjs = require('rollup-plugin-commonjs')
 const node = require('rollup-plugin-node-resolve')
 const mkdirp = require('mkdirp')
 
-function read (path) {
+function read (path) { // eslint-disable-line no-unused-vars
   return fs.readFileSync(path, 'utf8')
 }
 
@@ -42,8 +41,8 @@ function blue (str) {
 }
 
 const defaultPlugins = () => [
-  node({ jsnext: true, browser: true, module: true, main: true })
-  , commonjs()
+  node({ jsnext: true, browser: true, module: true, main: true }),
+  commonjs()
 ]
 
 const uglifyjs = (code, options = {}) => {
@@ -54,8 +53,8 @@ const uglifyjs = (code, options = {}) => {
         IMPORTANT: Please preserve 3rd-party library license info,
         inspired from @allex/amd-build-worker/config/util.js
         */
-        var text = c.value, type = c.type;
-        if (type == 'comment2') {
+        var text = c.value, type = c.type
+        if (type === 'comment2') {
           return /^!|@preserve|@license|@cc_on|MIT/i.test(text)
         }
       }
@@ -64,8 +63,7 @@ const uglifyjs = (code, options = {}) => {
 }
 
 class Rollup {
-
-  constructor(config) {
+  constructor (config) {
     if (!config) {
       throw new Error('Illegal constructor arguments.')
     }
@@ -82,7 +80,7 @@ class Rollup {
    *  ]
    * }
    */
-  _normalizeEntry(entry) {
+  _normalizeEntry (entry) {
     return {
       input: {
         input: entry.input,
@@ -94,7 +92,7 @@ class Rollup {
     }
   }
 
-  build() {
+  build () {
     const { destDir, entry } = this.config
 
     mkdirp.sync(destDir)
@@ -117,7 +115,7 @@ class Rollup {
         }
 
         // generate code and a sourcemap
-        const { code, map } = await bundle.generate(output)
+        const { code, map } = await bundle.generate(output) // eslint-disable-line no-unused-vars
 
         if (!minimize) {
           // write bundle result first
@@ -149,7 +147,6 @@ class Rollup {
 
         return bundle
       }))
-
     })
 
     return Promise.all(tasks)
