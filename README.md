@@ -1,6 +1,6 @@
 # rollup-worker
 
-Rollup worker for multiple bundle with customize distributes.
+Rollup worker for multiple entry bundle with customize distributes.
 
 ## Installation
 
