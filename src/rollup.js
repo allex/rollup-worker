@@ -9,13 +9,13 @@
 
 'use strict'
 
-const fs = require('fs')
-const path = require('path')
-const rollup = require('rollup')
-const uglify = require('uglify-js')
-const commonjs = require('rollup-plugin-commonjs')
-const node = require('rollup-plugin-node-resolve')
-const mkdirp = require('mkdirp')
+import fs from 'fs'
+import path from 'path'
+import rollup from 'rollup'
+import uglify from 'uglify-js'
+import commonjs from 'rollup-plugin-commonjs'
+import node from 'rollup-plugin-node-resolve'
+import mkdirp from 'mkdirp'
 
 function read (path) { // eslint-disable-line no-unused-vars
   return fs.readFileSync(path, 'utf8')
@@ -41,7 +41,33 @@ function blue (str) {
 }
 
 const defaultPlugins = () => [
-  node({ jsnext: true, browser: true, module: true, main: true }),
+  node({
+    jsnext: true, browser: true, module: true, main: true,
+
+    // For more resolve options see <https://www.npmjs.com/package/resolve>
+    customResolveOptions: {
+      pathFilter ( pkg, resvPath, relativePath ) {
+        const replacements = pkg.browser;
+        if (!replacements) {
+          return;
+        }
+
+        if (relativePath[0] != '.') {
+          relativePath = './' + relativePath;
+        }
+
+        let mappedPath = replacements[relativePath];
+        if (!mappedPath && !path.extname(relativePath)) {
+          mappedPath = replacements[relativePath + '.js'];
+          if (!mappedPath) {
+            mappedPath = replacements[relativePath + '.json'];
+          }
+        }
+
+        return mappedPath;
+      }
+    }
+  }),
   commonjs()
 ]
 
@@ -105,6 +131,7 @@ class Rollup {
       return Promise.all(targets.map(async (output) => {
         let { file: dest, minimize } = output
 
+        // resolve destination file with `destDir`
         if (dest) {
           dest = path.resolve(destDir, dest)
           output.file = dest
