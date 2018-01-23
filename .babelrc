@@ -4,16 +4,16 @@
       "loose": true,
       "modules": false,
       "useBuiltIns": true,
+      "exclude": ["transform-regenerator"],
       "targets": {
-        "browsers": [ "Ie > 8", "last 2 version", "safari >= 9" ]
+        "node": "5.12.0"
       }
     }]
   ],
   "plugins": [
-    [ "transform-runtime", {
-      "helpers": false,
-      "polyfill": false,
-      "regenerator": true } ]
+    ["fast-async", {
+      "useRuntimeModule": true
+    }]
   ],
   "comments": false
 }
