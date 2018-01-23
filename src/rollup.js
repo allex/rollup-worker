@@ -40,7 +40,7 @@ function blue (str) {
   return '\x1b[1m\x1b[34m' + str + '\x1b[39m\x1b[22m'
 }
 
-const defaultPlugins = () => [
+const defaultPlugins = (config) => [
   node({
     jsnext: true, browser: true, module: true, main: true,
 
@@ -89,6 +89,35 @@ const uglifyjs = (code, options = {}) => {
 }
 
 class Rollup {
+  /**
+   * Multi-entry config for rollup bundle
+   *
+   * @constructor
+   * @param {Object} config The config for multiple bundle
+   *
+   * ```
+   * {
+   *   destDir: path.join(__dirname, '..', './dist'),
+   *   entry: [
+   *    {
+   *      // more input options: https://rollupjs.org/guide/en#inputOptions
+   *      input: 'src/index.js',
+   *      plugins,
+   *      external,
+   *      ...
+   *      targets: [
+   *        {
+   *          // more ouput options: https://rollupjs.org/guide/en#outputoptions
+   *          globals, format, name, file, banner, ...
+   *        },
+   *        ...
+   *      ]
+   *    },
+   *    ...
+   *   ]
+   * }
+   * ```
+   */
   constructor (config) {
     if (!config) {
       throw new Error('Illegal constructor arguments.')
@@ -99,18 +128,20 @@ class Rollup {
   /**
    * Normalize config for rollup engine input, output configs.
    *
+   * ```
    * {
    *  input: 'path/foo.js',
    *  targets: [
    *    { [ outputConfig ... ] }, ...
    *  ]
    * }
+   * ```
    */
   _normalizeEntry (entry) {
     return {
       input: Object.assign(entry, {
         plugins: [
-          ...(entry.plugins || []), ...defaultPlugins()
+          ...(entry.plugins || []), ...defaultPlugins(this.config)
         ]
       }),
       targets: entry.targets.map(v => v)
