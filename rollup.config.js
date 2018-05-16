@@ -15,7 +15,7 @@ export default {
   ],
   external: Object.keys(pkg.dependencies).concat(['fs', 'path']),
   output: [
-    { file: 'dist/rollup-worker.cjs.js', format: 'cjs' },
-    { file: 'dist/rollup-worker.es.js', format: 'es' }
+    { file: 'lib/rollup-worker.cjs.js', format: 'cjs' },
+    { file: 'lib/rollup-worker.es.js', format: 'es' }
   ]
-};
+}

@@ -2,9 +2,8 @@
   "name": "rollup-worker",
   "version": "1.0.3",
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
-  "main": "dist/rollup-worker.cjs.js",
-  "module": "dist/rollup-worker.es.js",
-  "jsnext:main": "dist/rollup-worker.es.js",
+  "main": "lib/rollup-worker.cjs.js",
+  "module": "lib/rollup-worker.es.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/allex/rollup-worker.git"
@@ -22,26 +21,28 @@
     "lint:fix": "standard \"src/*.js\" --fix",
     "build": "rollup -c",
     "test": "npm run lint",
-    "prepublishOnly": "npm run build"
+    "prepare": "npm run build"
   },
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",
   "dependencies": {
     "mkdirp": "^0.5.1",
-    "rollup": "^0.49.3",
-    "rollup-plugin-babel": "^3.0.3",
-    "rollup-plugin-commonjs": "^8.2.4",
-    "rollup-plugin-node-resolve": "^3.0.0",
+    "rollup": "^0.59.0",
+    "rollup-plugin-babel": "beta",
+    "rollup-plugin-commonjs": "^9.1.3",
+    "rollup-plugin-node-resolve": "^3.3.0",
     "uglify-js": "^3.1.5"
   },
   "devDependencies": {
-    "babel-core": "^6.26.0",
-    "babel-preset-env": "^1.6.1",
-    "fast-async": "^6.3.0",
+    "@babel/core": "latest",
+    "@babel/preset-env": "latest",
+    "babel-plugin-transform-class-properties": "next",
+    "babel-plugin-transform-object-rest-spread": "next",
+    "fast-async": "7",
     "nodent-runtime": "^3.2.0"
   },
   "files": [
-    "dist"
+    "lib"
   ],
   "engines": {
     "node": ">=5.12.0"
