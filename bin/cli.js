@@ -29,7 +29,7 @@ config = config.rollup || config
 
 // build
 new Rollup(config).build().catch((e) => {
-  console.error(red(e.message))
+  console.error(e)
   process.exit(1)
 })
 

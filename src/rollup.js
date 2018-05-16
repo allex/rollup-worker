@@ -114,11 +114,11 @@ class Rollup {
     return (plugins || [ 'babel', 'resolve', 'commonjs' ])
       .map(p => {
         if (typeof p === 'string') {
-          const defaults = this.config.plugins[p]
-          if (!defaultPlugins[p]) {
+          let defaults = this.config.plugins[p], f
+          if (!(f = defaultPlugins[p])) {
             throw new Error(`The built-in plugin invalid. [${p}]`)
           }
-          return (defaults, rollupCfg)
+          return f(defaults, rollupCfg)
         }
         return p
       })
@@ -190,11 +190,11 @@ class Rollup {
       }
 
       // generate code and a sourcemap
-      const { code, map } = await bundle.generate(output) // eslint-disable-line no-unused-vars
+      const { code: source, map } = await bundle.generate(output) // eslint-disable-line no-unused-vars
 
       if (!minimize) {
         // write bundle result first
-        await write(dest, code, bundle)
+        await write(dest, source, bundle)
       }
 
       if (!['es', 'cjs'].includes(output.format)) {
@@ -202,18 +202,19 @@ class Rollup {
       }
 
       if (minimize) {
-        let minify = uglifyjs(code)
-        let ext = minimize.ext
-
-        // FIXME: fix the minify errors
+        let { code, error } = uglifyjs(source)
+        if (error) {
+          throw error
+        }
 
         // generate a extra minimize file (*.min.js)
+        let ext = minimize.ext
         if (ext) {
           ext = ext.charAt(0) === '.' ? ext : `.${ext}`
           dest = path.join(path.dirname(dest), `${path.basename(dest, '.js')}${ext}.js`)
         }
 
-        let s = minify.code, banner = output.banner
+        let s = code, banner = output.banner
         if (banner && s.substring(0, banner.length) !== banner) {
           s = output.banner + s
         }
