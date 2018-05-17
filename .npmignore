@@ -4,6 +4,7 @@
 .gitignore
 .lintcache
 .babelrc
+.npmrc
 .npmignore
 .editorconfig
 .eslintrc*

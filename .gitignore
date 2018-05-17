@@ -17,6 +17,7 @@
 .tmp
 .env
 .npm
+.npmrc
 .nyc_output
 .grunt
 .eslintcache
