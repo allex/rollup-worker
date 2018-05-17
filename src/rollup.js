@@ -15,8 +15,10 @@ import rollup from 'rollup'
 import uglify from 'uglify-js'
 import mkdirp from 'mkdirp'
 import defaultPlugins from './defaultPlugins'
+import loadConfigFile from './loadConfigFile'
 
 const assign = Object.assign
+const isArray = Array.isArray
 
 function read (path) { // eslint-disable-line no-unused-vars
   return fs.readFileSync(path, 'utf8')
@@ -24,6 +26,7 @@ function read (path) { // eslint-disable-line no-unused-vars
 
 function write (dest, code) {
   return new Promise(function (resolve, reject) {
+    mkdirp.sync(path.dirname(dest))
     fs.writeFile(dest, code, function (err) {
       if (err) return reject(err)
       dest = path.relative(process.cwd(), dest)
@@ -58,6 +61,24 @@ const uglifyjs = (code, options = {}) => {
   }, options))
 }
 
+const mergePlugins = (p1, p2) => {
+  const arr = [].concat(p1)
+  if (p2) {
+    const names = arr.map(o => o.name || o)
+    p2.forEach(p => {
+      if (!~names.indexOf(p)) {
+        arr.push(p)
+      }
+    })
+  }
+  return arr
+}
+
+const isNativeRollupCfg = o => {
+  if (!isArray(o)) o = [ o ]
+  return o.some(o => !!(o.input && o.output))
+}
+
 class Rollup {
   /**
    * Multi-entry config for rollup bundle
@@ -80,7 +101,7 @@ class Rollup {
    *      plugins,
    *      external,
    *      ...
-   *      targets: [
+   *      output: [
    *        {
    *          // more ouput options: https://rollupjs.org/guide/en#outputoptions
    *          globals, format, name, file, banner, ...
@@ -93,36 +114,47 @@ class Rollup {
    * }
    * ```
    */
-  constructor (config) {
-    if (!config) {
+  constructor (options) {
+    if (!options) {
       throw new Error('Illegal constructor arguments.')
     }
+
+    // Adapter options is a native rollup configs
+    if (isNativeRollupCfg(options)) {
+      options = {
+        entry: isArray(options) ? options : [ options ]
+      }
+    }
+
     this.config = assign({
       plugins: {} // settings for default plugins
-    }, config)
+    }, options)
   }
 
   _checkExternal (id, entry) {
     const dependencies = entry.dependencies || this.config.dependencies || []
-    if (!Array.isArray(dependencies)) {
+    if (!isArray(dependencies)) {
       return !!dependencies[id]
     }
     return dependencies.length ? ~dependencies.indexOf(id) : false
   }
 
   _normalizePlugins (plugins, rollupCfg) {
-    return (plugins || [ 'babel', 'resolve', 'commonjs' ])
-      .map(p => {
-        if (typeof p === 'string') {
-          let defaults = this.config.plugins[p], f
-          if (!(f = defaultPlugins[p])) {
-            throw new Error(`The built-in plugin invalid. [${p}]`)
-          }
-          return f(defaults, rollupCfg)
+    if (!plugins) {
+      plugins = [ 'babel', 'resolve', 'commonjs' ]
+    } else {
+      plugins = plugins.filter(p => !!p)
+    }
+    return plugins.map(p => {
+      if (typeof p === 'string') {
+        let defaults = this.config.plugins[p], f
+        if (!(f = defaultPlugins[p])) {
+          throw new Error(`The built-in plugin invalid. [${p}]`)
         }
-        return p
-      })
-      .filter(p => !!p)
+        return f(defaults, rollupCfg)
+      }
+      return p
+    })
   }
 
   /**
@@ -145,11 +177,20 @@ class Rollup {
     entry = assign({}, entry)
 
     let self = this
-    let { targets, globals } = entry; delete entry.targets
+    let { targets, output, globals } = entry; delete entry.targets
 
+    output = output || targets
     globals = globals || {}
 
-    return targets.map(output => {
+    if (!output) {
+      throw new Error('You must specify `option.output`.')
+    }
+
+    if (!isArray(output)) {
+      output = [ output ]
+    }
+
+    return output.map(output => {
       const { format } = output
       if (!format) {
         throw new Error('target output format required.')
@@ -157,12 +198,16 @@ class Rollup {
 
       output = assign({ globals }, output); delete output.plugins
 
+      const plugins = (entry.plugins || output.plugins)
+        ? mergePlugins(entry.plugins, output.plugins)
+        : null
+
       const input = assign({
         external (id) {
           return !/umd|iife/.test(format) && self._checkExternal(id, entry)
         },
         plugins: [
-          ...this._normalizePlugins(output.plugins || entry.plugins, { ...entry, output })
+          ...this._normalizePlugins(plugins, { ...entry, output })
         ]
       }, entry)
 
@@ -171,7 +216,7 @@ class Rollup {
   }
 
   mapBundles (entry) {
-    const destDir = this.config.destDir
+    const destDir = this.config.destDir || '.'
     const list = this._normalizeEntry(entry)
 
     const series = list.map(async ({ input, output }) => {
@@ -230,12 +275,13 @@ class Rollup {
   }
 
   build () {
-    const { destDir, entry } = this.config
-    mkdirp.sync(destDir)
     return Promise.all(
-      entry.map(o => this.mapBundles(o))
+      this.config.entry.map(o => this.mapBundles(o))
     )
   }
 }
 
-module.exports = Rollup
+Rollup.defaultPlugins = defaultPlugins
+Rollup.loadConfigFile = loadConfigFile
+
+export default Rollup

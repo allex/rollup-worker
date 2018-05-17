@@ -10,11 +10,13 @@ let configFile = p.resolve(process.cwd(), '.rolluprc.js')
 // parse --config from argv
 while (argv.length) {
   var k = argv.shift(), v = argv[0]
-  if (k === '--config') {
-    if (v) {
-      configFile = p.resolve(process.cwd(), v)
-    }
-    break
+  switch (k) {
+    case '-c':
+    case '--config':
+      if (v) {
+        configFile = p.resolve(process.cwd(), v)
+      }
+      break
   }
 }
 
@@ -23,16 +25,16 @@ if (!configFile || !fs.existsSync(configFile)) {
   process.exit(1)
 }
 
-let config = require(configFile)
-
-config = config.rollup || config
-
-// build
-new Rollup(config).build().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
-
-function red (str) {
-  return `\x1B[31m${str}\x1B[0m`
-}
+Rollup.loadConfigFile(configFile)
+  .then(function (configs) {
+    configs = configs.map(o => o.rollup || o)
+    if (configs.some(o => o.entry)) {
+      configs = configs[0]
+    }
+    // build
+    return new Rollup(configs).build()
+  })
+  .catch(function (e) {
+    console.error(e)
+    process.exit(1)
+  })
