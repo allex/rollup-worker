@@ -17,6 +17,7 @@ import mkdirp from 'mkdirp'
 import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
 
+const debug = require('debug')('rollup-worker')
 const assign = Object.assign
 const isArray = Array.isArray
 
@@ -62,16 +63,16 @@ const uglifyjs = (code, options = {}) => {
 }
 
 const mergePlugins = (p1, p2) => {
-  const arr = [].concat(p1)
+  p1 = [].concat(p1 || [])
   if (p2) {
-    const names = arr.map(o => o.name || o)
+    const names = p1.map(o => o.name || o)
     p2.forEach(p => {
       if (!~names.indexOf(p)) {
-        arr.push(p)
+        p1.push(p)
       }
     })
   }
-  return arr
+  return p1
 }
 
 const isNativeRollupCfg = o => {
@@ -145,16 +146,17 @@ class Rollup {
     } else {
       plugins = plugins.filter(p => !!p)
     }
-    return plugins.map(p => {
+    const list = plugins.map(p => {
       if (typeof p === 'string') {
         let defaults = this.config.plugins[p], f
         if (!(f = defaultPlugins[p])) {
           throw new Error(`The built-in plugin invalid. [${p}]`)
         }
-        return f(defaults, rollupCfg)
+        p = f(defaults, rollupCfg)
       }
       return p
     })
+    return list
   }
 
   /**
@@ -196,20 +198,24 @@ class Rollup {
         throw new Error('target output format required.')
       }
 
-      output = assign({ globals }, output); delete output.plugins
+      let input = Object.assign({}, entry)
 
-      const plugins = (entry.plugins || output.plugins)
-        ? mergePlugins(entry.plugins, output.plugins)
-        : null
+      let commonPlugins = input.plugins; delete input.plugins
+      let extendPlugins = output.plugins; delete output.plugins
 
-      const input = assign({
+      output = assign({ globals }, output)
+
+      const plugins =
+        this._normalizePlugins(
+          (commonPlugins || extendPlugins) ? mergePlugins(commonPlugins, extendPlugins) : null,
+          { ...input, output })
+
+      input = assign({
+        plugins,
         external (id) {
-          return !/umd|iife/.test(format) && self._checkExternal(id, entry)
-        },
-        plugins: [
-          ...this._normalizePlugins(plugins, { ...entry, output })
-        ]
-      }, entry)
+          return !/umd|iife/.test(format) && self._checkExternal(id, input)
+        }
+      }, input)
 
       return { input, output }
     })
@@ -218,6 +224,8 @@ class Rollup {
   mapBundles (entry) {
     const destDir = this.config.destDir || '.'
     const list = this._normalizeEntry(entry)
+
+    debug('rollup entry => \n%O', list)
 
     const series = list.map(async ({ input, output }) => {
       // create a bundle

@@ -20,6 +20,7 @@
     "lint": "standard \"src/*.js\"",
     "lint:fix": "standard \"src/*.js\" --fix",
     "build": "rollup -c",
+    "watch": "rollup -w -c",
     "test": "npm run lint",
     "prepare": "npm run build"
   },
@@ -27,6 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.1",
+    "debug": "^3.1.0",
     "mkdirp": "^0.5.1",
     "rollup": "^0.59.0",
     "rollup-plugin-babel": "beta",
