@@ -45,7 +45,8 @@
     "nodent-runtime": "^3.2.0"
   },
   "files": [
-    "lib"
+    "lib",
+    "bin"
   ],
   "engines": {
     "node": ">=5.12.0"

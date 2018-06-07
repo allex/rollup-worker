@@ -14,6 +14,7 @@ import path from 'path'
 import rollup from 'rollup'
 import uglify from 'uglify-js'
 import mkdirp from 'mkdirp'
+import chalk from 'chalk'
 import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
 
@@ -31,18 +32,20 @@ function write (dest, code) {
     fs.writeFile(dest, code, function (err) {
       if (err) return reject(err)
       dest = path.relative(process.cwd(), dest)
-      console.log(blue(dest) + ' ' + getSize(code))
+      console.log(chalk.grey('-> ') + chalk.green(dest) + ' ' + getSize(code))
       resolve()
     })
   })
 }
 
-function getSize (code) {
-  return (code.length / 1024).toFixed(2) + 'kb'
-}
-
-function blue (str) {
-  return '\x1b[1m\x1b[34m' + str + '\x1b[39m\x1b[22m'
+const getSize = code => {
+  let v = code.length / 1024
+  let u = 'kb'
+  if (v > 1024) {
+    v = v / 1024
+    u = 'Mb'
+  }
+  return v.toFixed(2) + u
 }
 
 const uglifyjs = (code, options = {}) => {
@@ -148,7 +151,7 @@ class Rollup {
     }
     const list = plugins.map(p => {
       if (typeof p === 'string') {
-        let defaults = this.config.plugins[p], f
+        let defaults = this.config.plugins[p] || {}, f
         if (!(f = defaultPlugins[p])) {
           throw new Error(`The built-in plugin invalid. [${p}]`)
         }
@@ -202,6 +205,7 @@ class Rollup {
 
       let commonPlugins = input.plugins; delete input.plugins
       let extendPlugins = output.plugins; delete output.plugins
+      let externalFn = input.external; delete input.external // fn(id, format, defaultFn)
 
       output = assign({ globals }, output)
 
@@ -210,12 +214,15 @@ class Rollup {
           (commonPlugins || extendPlugins) ? mergePlugins(commonPlugins, extendPlugins) : null,
           { ...input, output })
 
-      input = assign({
-        plugins,
-        external (id) {
-          return !/umd|iife/.test(format) && self._checkExternal(id, input)
-        }
-      }, input)
+      const defaultExternalFn = (id) => {
+        return !/umd|iife/.test(format) && self._checkExternal(id, input)
+      }
+
+      const external = !externalFn ? defaultExternalFn : (id) => {
+        return externalFn(id, format, defaultExternalFn)
+      }
+
+      input = assign({ plugins, external }, input)
 
       return { input, output }
     })
