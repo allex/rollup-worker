@@ -36,4 +36,5 @@ yarn.lock
 package-lock.json
 dist
 lib
+bin
 coverage

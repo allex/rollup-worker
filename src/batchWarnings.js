@@ -1,3 +1,4 @@
+import chalk from 'chalk'
 import { relativeId } from './utils'
 import { stderr } from './logging'
 

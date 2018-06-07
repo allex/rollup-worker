@@ -12,7 +12,7 @@ export default function loadConfigFile (configFile, commandOptions = {}) {
   return rollup
     .rollup({
       input: configFile,
-      external(id) {
+      external (id) {
         return (id[0] !== '.' && !path.isAbsolute(id)) || id.slice(-5, id.length) === '.json'
       },
       onwarn: warnings.add

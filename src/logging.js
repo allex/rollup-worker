@@ -1,9 +1,10 @@
 import chalk from 'chalk'
+import { relativeId } from './utils'
 
-if (!chalk.supportsColor) chalk.enabled = false;
+if (!chalk.supportsColor) chalk.enabled = false
 
 // log to stderr to keep `rollup main.js > bundle.js` from breaking
-export const stderr = console.error.bind(console); // eslint-disable-line no-console
+export const stderr = console.error.bind(console) // eslint-disable-line no-console
 
 export function handleError (err, recover) {
   if (recover === void 0) { recover = false }
