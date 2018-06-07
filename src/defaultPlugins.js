@@ -12,19 +12,14 @@ import babel from 'rollup-plugin-babel'
 import commonjs from 'rollup-plugin-commonjs'
 import resolve from 'rollup-plugin-node-resolve'
 import { deepAssign } from './utils'
-import alias from './alias'
 
 const debug = require('debug')('rollup-worker:plugins')
 
 const assign = deepAssign
 
-const result = (o, ...args) => {
-  return typeof o === 'function' ? o(...args) : o
-}
-
 const defaultPlugins = {
-  resolve (defaults, rollupCfg) {
-    const opts = assign({}, result(defaults, rollupCfg), {
+  resolve (defaults) {
+    const opts = assign({}, defaults, {
       jsnext: true,
       module: true,
       main: true,
@@ -55,18 +50,8 @@ const defaultPlugins = {
     debug('`resolve` options => ', opts)
     return resolve(opts)
   },
-  commonjs (defaults, rollupCfg) {
-    return commonjs(
-      assign({}, result(defaults, rollupCfg)))
-  },
-  babel (defaults, rollupCfg) {
-    return babel(
-      assign({}, result(defaults, rollupCfg)))
-  },
-  alias (defaults, rollupCfg) {
-    return alias(
-      assign({}, result(defaults, rollupCfg)))
-  }
+  babel,
+  commonjs
 }
 
 export default defaultPlugins

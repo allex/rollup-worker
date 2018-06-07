@@ -17,6 +17,7 @@ import mkdirp from 'mkdirp'
 import chalk from 'chalk'
 import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
+import { result, sequence } from './utils'
 
 const debug = require('debug')('rollup-worker')
 const assign = Object.assign
@@ -78,6 +79,8 @@ const mergePlugins = (p1, p2) => {
   return p1
 }
 
+const isRollupPluginCtor = o => typeof o === 'function' && ['resolveId', 'transform', 'load'].filter(k => !!o[k]).length === 0
+
 const isNativeRollupCfg = o => {
   if (!isArray(o)) o = [ o ]
   return o.some(o => !!(o.input && o.output))
@@ -130,6 +133,13 @@ class Rollup {
       }
     }
 
+    const entry = options.entry
+    if (!entry) {
+      throw new Error('entry not valid')
+    }
+
+    options.entry = isArray(entry) ? entry : [ entry ]
+
     this.config = assign({
       plugins: {} // settings for default plugins
     }, options)
@@ -149,16 +159,39 @@ class Rollup {
     } else {
       plugins = plugins.filter(p => !!p)
     }
+
+    const cfg = this.config
+    const pluginOptions = cfg.pluginOptions || cfg.plugins
+    const output = rollupCfg.output
+
     const list = plugins.map(p => {
-      if (typeof p === 'string') {
-        let defaults = this.config.plugins[p] || {}, f
-        if (!(f = defaultPlugins[p])) {
+      const isBuiltin = typeof p === 'string'
+      const name = isBuiltin ? p : p.name
+
+      let defaults
+      if (name) {
+        defaults = result(pluginOptions[name], rollupCfg)
+        if (defaults) {
+          debug(`Retrieve plugin '${name}' defaults for [${output.format}][${output.file}]. \n`, defaults)
+        }
+      }
+
+      let pluginCtor = isRollupPluginCtor(p) ? p : null
+      if (isBuiltin) {
+        pluginCtor = defaultPlugins[p]
+        if (!pluginCtor) {
           throw new Error(`The built-in plugin invalid. [${p}]`)
         }
-        p = f(defaults, rollupCfg)
       }
+
+      // Apply plugin settings in runtime
+      if (pluginCtor) {
+        p = pluginCtor(defaults)
+      }
+
       return p
     })
+
     return list
   }
 
@@ -195,19 +228,18 @@ class Rollup {
       output = [ output ]
     }
 
-    return output.map(output => {
-      const { format } = output
+    return output.map(o => {
+      const { format } = o
       if (!format) {
         throw new Error('target output format required.')
       }
 
-      let input = Object.assign({}, entry)
+      let output = assign({ globals }, o)
+      let input = assign({}, entry)
 
       let commonPlugins = input.plugins; delete input.plugins
       let extendPlugins = output.plugins; delete output.plugins
       let externalFn = input.external; delete input.external // fn(id, format, defaultFn)
-
-      output = assign({ globals }, output)
 
       const plugins =
         this._normalizePlugins(
@@ -234,7 +266,7 @@ class Rollup {
 
     debug('rollup entry => \n%O', list)
 
-    const series = list.map(async ({ input, output }) => {
+    return sequence(list, async ({ input, output }) => {
       // create a bundle
       let bundle = await rollup.rollup(input)
 
@@ -285,8 +317,6 @@ class Rollup {
 
       return bundle
     })
-
-    return Promise.all(series)
   }
 
   build () {

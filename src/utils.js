@@ -135,3 +135,7 @@ export function sequence (array, fn) {
   }
   return promise.then(function () { return results })
 }
+
+export function result (o, ...args) {
+  return typeof o === 'function' ? o(...args) : o
+}
