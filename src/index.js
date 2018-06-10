@@ -18,7 +18,9 @@ import chalk from 'chalk'
 import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
 import { result, sequence } from './utils'
+import { stderr } from './logging'
 
+const pkg = require('../package.json')
 const debug = require('debug')('rollup-worker')
 const assign = Object.assign
 const isArray = Array.isArray
@@ -33,7 +35,7 @@ function write (dest, code) {
     fs.writeFile(dest, code, function (err) {
       if (err) return reject(err)
       dest = path.relative(process.cwd(), dest)
-      console.log(chalk.grey('-> ') + chalk.green(dest) + ' ' + getSize(code))
+      stderr(chalk.cyan('\u2192 ' + chalk.bold(dest) + ' ' + getSize(code)))
       resolve()
     })
   })
@@ -186,7 +188,7 @@ class Rollup {
 
       // Apply plugin settings in runtime
       if (pluginCtor) {
-        p = pluginCtor(defaults)
+        p = pluginCtor(defaults || {})
       }
 
       return p
@@ -216,6 +218,7 @@ class Rollup {
 
     let self = this
     let { targets, output, globals } = entry; delete entry.targets
+    let destDir = self.config.destDir || '.'
 
     output = output || targets
     globals = globals || {}
@@ -241,6 +244,11 @@ class Rollup {
       let extendPlugins = output.plugins; delete output.plugins
       let externalFn = input.external; delete input.external // fn(id, format, defaultFn)
 
+      // resolve output file with base dir
+      if (output.file) {
+        output.file = path.resolve(destDir, output.file)
+      }
+
       const plugins =
         this._normalizePlugins(
           (commonPlugins || extendPlugins) ? mergePlugins(commonPlugins, extendPlugins) : null,
@@ -261,7 +269,6 @@ class Rollup {
   }
 
   mapBundles (entry) {
-    const destDir = this.config.destDir || '.'
     const list = this._normalizeEntry(entry)
 
     debug('rollup entry => \n%O', list)
@@ -269,16 +276,10 @@ class Rollup {
     return sequence(list, async ({ input, output }) => {
       // create a bundle
       let bundle = await rollup.rollup(input)
-
       let { file: dest, minimize } = output
 
-      // resolve destination file with `destDir`
-      if (dest) {
-        dest = path.resolve(destDir, dest)
-        output.file = dest
-        if (/\.min\./.test(path.basename(dest))) {
-          minimize = true
-        }
+      if (dest && /\.min\./.test(path.basename(dest))) {
+        minimize = true
       }
 
       // generate code and a sourcemap
@@ -324,9 +325,24 @@ class Rollup {
       this.config.entry.map(o => this.mapBundles(o))
     )
   }
+
+  watch (options) {
+    const watchOptions = []
+    const watch = assign({
+      chokidar: true
+    }, options)
+    this.config.entry.forEach(entry => {
+      const list = this._normalizeEntry(entry)
+      list.forEach(({ input, output }) => {
+        watchOptions.push({ ...input, output, watch })
+      })
+    })
+    return rollup.watch(watchOptions)
+  }
 }
 
 Rollup.defaultPlugins = defaultPlugins
 Rollup.loadConfigFile = loadConfigFile
+Rollup.VERSION = pkg.version
 
 export default Rollup

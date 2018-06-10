@@ -1,9 +1,11 @@
 import p from 'path'
 import fs from 'fs'
 import Worker from 'rollup-worker'
+import watch from './watch'
 
 let argv = process.argv.slice(2)
 let configFile = p.resolve(process.cwd(), '.rolluprc.js')
+let watchMode = false
 
 // parse --config from argv
 while (argv.length) {
@@ -14,6 +16,9 @@ while (argv.length) {
       if (v) {
         configFile = p.resolve(process.cwd(), v)
       }
+      break
+    case '-w':
+      watchMode = true
       break
   }
 }
@@ -31,12 +36,16 @@ Worker.loadConfigFile(configFile)
     if (configs.some(o => o.entry)) {
       configs = configs[0]
     }
-    // build
-    return build(configs)
+    if (watchMode) {
+      watch(configFile, configs)
+    } else {
+      // build
+      return build(configs)
+    }
   })
   .catch((e) => {
     console.error(e)
     process.exit(1)
   })
 
-export default build
+export default { build, watch }

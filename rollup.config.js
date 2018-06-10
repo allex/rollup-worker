@@ -1,9 +1,9 @@
 import babel from 'rollup-plugin-babel'
 import commonjs from 'rollup-plugin-commonjs'
 import nodeResolve from 'rollup-plugin-node-resolve'
-import pkg from './package.json'
+import { dependencies } from './package.json'
 export default [ {
-  input: 'src/rollup.js',
+  input: 'src/index.js',
   plugins: [
     nodeResolve({
       jsnext: true, browser: true, module: true, main: true }),
@@ -13,9 +13,9 @@ export default [ {
       exclude: 'node_modules/**' }),
     commonjs()
   ],
-  external: Object.keys(pkg.dependencies).concat(['fs', 'path']),
+  external: Object.keys(dependencies).concat([ 'fs', 'path', 'events', 'module', 'util' ]),
   output: [
-    { file: 'lib/rollup-worker.cjs.js', format: 'cjs' },
+    { file: 'lib/rollup-worker.js', format: 'cjs' },
     { file: 'lib/rollup-worker.es.js', format: 'es' }
   ]
 }, {
@@ -29,16 +29,7 @@ export default [ {
       exclude: 'node_modules/**' }),
     commonjs()
   ],
-  external: [
-    'fs',
-    'path',
-    'module',
-    'events',
-    'rollup',
-    'assert',
-    'os',
-    'util'
-  ],
+  external: Object.keys(dependencies).concat([ 'fs', 'path', 'module', 'events', 'rollup-worker', 'assert', 'os', 'util' ]),
   output: [
     {
       file: 'bin/cli.js',

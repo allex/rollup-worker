@@ -1,6 +1,6 @@
 {
   "presets": [
-    ["@babel/preset-env", {
+    ["env", {
       "loose": true,
       "modules": false,
       "useBuiltIns": false,
@@ -11,9 +11,7 @@
     }]
   ],
   "plugins": [
-    ["module:fast-async", {
-      "useRuntimeModule": true
-    }],
+    [ "fast-async", {} ],
     [ "transform-class-properties", { "spec": true } ],
     [ "transform-object-rest-spread", { "useBuiltIns": true } ]
   ],
