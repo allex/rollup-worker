@@ -52,7 +52,9 @@ const getSize = code => {
 }
 
 const uglifyjs = (code, options = {}) => {
+  // https://github.com/mishoo/UglifyJS2#minify-options
   return uglify.minify(code, assign({
+    ie8: true,
     output: {
       comments: function (n, c) {
         /*
