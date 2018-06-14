@@ -170,7 +170,6 @@ class Rollup {
       plugins = plugins.filter(p => !!p)
     }
 
-    const cfg = this.config
     const output = rollupCfg.output
 
     const list = plugins.map(p => {

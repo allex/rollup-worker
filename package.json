@@ -23,7 +23,7 @@
     "build": "rollup -c && shx chmod a+x bin/cli.js",
     "watch": "rollup -w -c",
     "test": "npm run lint",
-    "prepare": "npm run build"
+    "prepare": "npm test && npm run build"
   },
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",
