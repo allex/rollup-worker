@@ -17,7 +17,7 @@ import mkdirp from 'mkdirp'
 import chalk from 'chalk'
 import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
-import { result, sequence } from './utils'
+import { result, sequence, deepAssign, relativeId } from './utils'
 import { stderr } from './logging'
 
 const pkg = require('../package.json')
@@ -34,7 +34,7 @@ function write (dest, code) {
     mkdirp.sync(path.dirname(dest))
     fs.writeFile(dest, code, function (err) {
       if (err) return reject(err)
-      dest = path.relative(process.cwd(), dest)
+      dest = relativeId(dest)
       stderr(chalk.cyan('\u2192 ' + chalk.bold(dest) + ' ' + getSize(code)))
       resolve()
     })
@@ -53,7 +53,7 @@ const getSize = code => {
 
 const uglifyjs = (code, options = {}) => {
   // https://github.com/mishoo/UglifyJS2#minify-options
-  return uglify.minify(code, assign({
+  return uglify.minify(code, deepAssign({
     ie8: true,
     output: {
       comments: function (n, c) {
@@ -149,6 +149,12 @@ class Rollup {
     }, options)
   }
 
+  getopt (name, ...args) {
+    const cfg = this.config
+    const opt = (cfg.pluginOptions || cfg.plugins || {})[name]
+    return result(opt, ...args)
+  }
+
   _checkExternal (id, entry) {
     const dependencies = entry.dependencies || this.config.dependencies || []
     if (!isArray(dependencies)) {
@@ -165,7 +171,6 @@ class Rollup {
     }
 
     const cfg = this.config
-    const pluginOptions = cfg.pluginOptions || cfg.plugins
     const output = rollupCfg.output
 
     const list = plugins.map(p => {
@@ -174,10 +179,8 @@ class Rollup {
 
       let defaults
       if (name) {
-        defaults = result(pluginOptions[name], rollupCfg)
-        if (defaults) {
-          debug(`Retrieve plugin '${name}' defaults for [${output.format}][${output.file}]. \n`, defaults)
-        }
+        defaults = this.getopt(name, rollupCfg)
+        debug(`defaults of plugin "${name}" for "${output.format} => ${relativeId(output.file)}":`, defaults)
       }
 
       let pluginCtor = isRollupPluginCtor(p) ? p : null
@@ -297,7 +300,7 @@ class Rollup {
       }
 
       if (minimize) {
-        let { code, error } = uglifyjs(source)
+        let { code, error } = uglifyjs(source, this.getopt('uglifyjs'))
         if (error) {
           throw error
         }

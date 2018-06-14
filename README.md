@@ -7,9 +7,9 @@ Rollup worker for multiple entry bundle with customize distributes.
 ```bash
 $
 
-npm i rollup-worker
+npm i -g rollup-worker@next
 
-rollup-bundle --config <CONFIG_FILE.js>
+rollup-worker --config <CONFIG_FILE.js>
 ```
 
 ## Usage
@@ -18,15 +18,44 @@ rollup config file
 
 ```js
 // cat .fssrc.js
-var path = require('path')
-var coffee = require('rollup-plugin-coffee-script')
-var pkg = require('./package.json')
+import path from 'path'
+import coffee from 'rollup-plugin-coffee-script'
 
-var plugins = [ coffee() ]
+const { version, name, author, dependencies } = require('./package.json')
+
+// add some customize plugins with builtins
+const plugins = [
+  coffee(),
+  'resolve',
+  'commonjs'
+]
+
+const babelConfig = { ... }
 
 module.exports = {
   rollup: {
     destDir: path.join(__dirname, './'),
+    pluginOptions: {
+      babel: (rollupCfg) => {
+        const babelrc = Object.assign({}, babelConfig)
+        if ([ 'es', 'cjs' ].includes(rollupCfg.output.format)) {
+          babelrc.comments = true
+        }
+        return babelrc
+      },
+      nodeResolve: (rollupCfg) => {
+        const format = rollupCfg.output.format
+        return {
+          preferBuiltins: false,
+          customResolveOptions: {
+            moduleDirectory: /min|umd|iife/.test(format) ? [ 'src', 'node_modules' ] : [ 'src' ]
+          }
+        }
+      },
+      uglifyjs: {
+        ie8: false
+      }
+    },
     entry: [
       {
         input: './pace.coffee',
@@ -40,7 +69,7 @@ module.exports = {
             format: 'umd',
             name: 'Pace',
             file: 'pace.js',
-            banner: `/*! ${pkg.name} ${pkg.version} */\n`
+            banner: `/*! ${name} v${version} | ${license || 'MIT'} Licensed. | By ${author} */\n`
           }
         ]
       },
