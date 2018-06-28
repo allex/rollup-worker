@@ -1,6 +1,6 @@
 {
   "name": "rollup-worker",
-  "version": "1.0.6-beta.4",
+  "version": "1.0.6-beta.5",
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
   "main": "lib/rollup-worker.js",
   "module": "lib/rollup-worker.es.js",
@@ -28,6 +28,7 @@
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",
   "dependencies": {
+    "babel-core": "6",
     "chalk": "^2.4.1",
     "debug": "^3.1.0",
     "rollup": "^0.59.0",
@@ -39,7 +40,6 @@
   },
   "devDependencies": {
     "ansi-escapes": "^3.1.0",
-    "babel-core": "^6.26.3",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-preset-env": "^1.7.0",

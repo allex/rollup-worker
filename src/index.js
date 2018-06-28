@@ -63,7 +63,7 @@ const uglifyjs = (code, options = {}) => {
         */
         var text = c.value, type = c.type
         if (type === 'comment2') {
-          return /^!|@preserve|@license|@cc_on|MIT/i.test(text)
+          return /^!|@preserve|@license|@cc_on| Licensed/i.test(text)
         }
       }
     }
@@ -189,8 +189,7 @@ class Rollup {
           throw new Error(`The built-in plugin invalid. [${p}]`)
         }
       }
-
-      // Apply plugin settings in runtime
+      // apply plugin settings
       if (pluginCtor) {
         p = pluginCtor(defaults || {})
       }
@@ -243,7 +242,8 @@ class Rollup {
         throw new Error('target output format required.')
       }
 
-      let output = assign({ globals }, o)
+      // merge with some defaults
+      let output = assign({ globals, indent: '  ' }, o)
       let input = assign({}, entry)
 
       // resolve output file with base dir
