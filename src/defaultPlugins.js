@@ -53,8 +53,6 @@ const defaultPlugins = {
   },
   json (defaults) {
     const opts = assign({
-      // exclude: 'node_modules/**',
-      preferConst: true, // Default: false
       indent: '  '
     }, defaults)
     return json(opts)

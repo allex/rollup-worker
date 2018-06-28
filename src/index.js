@@ -168,7 +168,7 @@ class Rollup {
 
     // add some builtin plugins
     const builtins = [ 'json' ]
-    plugins = mergeArray(plugins, builtins, { pk: 'name' })
+    plugins = mergeArray(builtins, plugins, { pk: 'name' })
 
     const output = rollupCfg.output
 
