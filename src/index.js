@@ -17,7 +17,7 @@ import mkdirp from 'mkdirp'
 import chalk from 'chalk'
 import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
-import { result, sequence, deepAssign, relativeId } from './utils'
+import { result, sequence, deepAssign, relativeId, mergeArray } from './utils'
 import { stderr } from './logging'
 
 const pkg = require('../package.json')
@@ -70,24 +70,19 @@ const uglifyjs = (code, options = {}) => {
   }, options))
 }
 
-const mergePlugins = (p1, p2) => {
-  p1 = [].concat(p1 || [])
-  if (p2) {
-    const names = p1.map(o => o.name || o)
-    p2.forEach(p => {
-      if (!~names.indexOf(p)) {
-        p1.push(p)
-      }
-    })
-  }
-  return p1
-}
-
 const isRollupPluginCtor = o => typeof o === 'function' && ['resolveId', 'transform', 'load'].filter(k => !!o[k]).length === 0
 
 const isNativeRollupCfg = o => {
   if (!isArray(o)) o = [ o ]
   return o.some(o => !!(o.input && o.output))
+}
+
+const getCombinePlugins = (pi, po) => {
+  if ((pi && pi.length) || (po && po.length)) {
+    return mergeArray(pi, po, { pk: 'name' })
+  }
+  // Returns `null` to identify use builtin plugins when both pi, po not set.
+  return null
 }
 
 class Rollup {
@@ -100,7 +95,7 @@ class Rollup {
    * ```
    * {
    *   destDir: path.join(__dirname, '..', './dist'),
-   *   plugin: {
+   *   pluginOptions: {
    *    resolve: { ... },
    *    commonjs: { ... },
    *    babel: { ... }
@@ -110,6 +105,7 @@ class Rollup {
    *      // more input options: https://rollupjs.org/guide/en#inputOptions
    *      input: 'src/index.js',
    *      plugins,
+   *      globals,
    *      external,
    *      ...
    *      output: [
@@ -170,6 +166,10 @@ class Rollup {
       plugins = plugins.filter(p => !!p)
     }
 
+    // add some builtin plugins
+    const builtins = [ 'json' ]
+    plugins = mergeArray(plugins, builtins, { pk: 'name' })
+
     const output = rollupCfg.output
 
     const list = plugins.map(p => {
@@ -221,8 +221,10 @@ class Rollup {
     entry = assign({}, entry)
 
     let self = this
-    let { targets, output, globals } = entry; delete entry.targets
     let destDir = self.config.destDir || '.'
+
+    let { targets, output, globals } = entry
+    ;[ 'targets', 'output', 'globals' ].forEach(k => delete entry[k])
 
     output = output || targets
     globals = globals || {}
@@ -244,27 +246,38 @@ class Rollup {
       let output = assign({ globals }, o)
       let input = assign({}, entry)
 
-      let commonPlugins = input.plugins; delete input.plugins
-      let extendPlugins = output.plugins; delete output.plugins
-      let externalFn = input.external; delete input.external // fn(id, format, defaultFn)
-
       // resolve output file with base dir
       if (output.file) {
         output.file = path.resolve(destDir, output.file)
       }
 
-      const plugins =
-        this._normalizePlugins(
-          (commonPlugins || extendPlugins) ? mergePlugins(commonPlugins, extendPlugins) : null,
-          { ...input, output })
+      const plugins = this._normalizePlugins(
+        getCombinePlugins(input.plugins, output.plugins), { ...input, output })
 
-      const defaultExternalFn = (id) => {
-        return !/umd|iife/.test(format) && self._checkExternal(id, input)
+      delete input.plugins
+      delete output.plugins
+
+      // external(importee, importer);
+      const defaultExternalFn = (id, checkDependency) => {
+        const isDependency = self._checkExternal(id, input)
+
+        checkDependency = typeof checkDependency === 'boolean'
+          ? checkDependency : false
+
+        if (checkDependency) {
+          // Check cjs and esm with external bundles by the defaults
+          return isDependency
+        }
+
+        return !/umd|iife/.test(format) && isDependency
       }
 
-      const external = !externalFn ? defaultExternalFn : (id) => {
-        return externalFn(id, format, defaultExternalFn)
-      }
+      let _external = input.external; delete input.external // fn(id, format, defaultFn)
+
+      const external = !_external
+        ? defaultExternalFn
+        : (typeof _external === 'function'
+          ? (id) => _external(id, format, defaultExternalFn) : _external)
 
       input = assign({ plugins, external }, input)
 
@@ -275,7 +288,7 @@ class Rollup {
   mapBundles (entry) {
     const list = this._normalizeEntry(entry)
 
-    debug('rollup entry => \n%O', list)
+    debug('normalized rollup entries => \n%O', list)
 
     return sequence(list, async ({ input, output }) => {
       // create a bundle
@@ -325,9 +338,9 @@ class Rollup {
   }
 
   build () {
-    return Promise.all(
-      this.config.entry.map(o => this.mapBundles(o))
-    )
+    return sequence(this.config.entry, o => {
+      return this.mapBundles(o)
+    })
   }
 
   watch (options) {
@@ -345,8 +358,8 @@ class Rollup {
   }
 }
 
+Rollup.VERSION = pkg.version
 Rollup.defaultPlugins = defaultPlugins
 Rollup.loadConfigFile = loadConfigFile
-Rollup.VERSION = pkg.version
 
 export default Rollup

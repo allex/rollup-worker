@@ -60,7 +60,7 @@ module.exports = {
       {
         input: './pace.coffee',
         plugins,
-        targets: [
+        output: [
           {
             format: 'es',
             file: 'pace.esm.js'
@@ -76,7 +76,7 @@ module.exports = {
       {
         input: './docs/lib/themes.coffee',
         plugins,
-        targets: [
+        output: [
           {
             format: 'iife',
             minimize: true,

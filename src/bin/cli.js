@@ -4,7 +4,7 @@ import Worker from 'rollup-worker'
 import watch from './watch'
 
 let argv = process.argv.slice(2)
-let configFile = p.resolve(process.cwd(), '.rolluprc.js')
+let configFile = p.resolve(process.cwd(), '.fssrc.js')
 let watchMode = false
 
 // parse --config from argv
@@ -13,8 +13,9 @@ while (argv.length) {
   switch (k) {
     case '-c':
     case '--config':
-      if (v) {
+      if (v && v.charAt(0) !== '-') {
         configFile = p.resolve(process.cwd(), v)
+        argv.shift()
       }
       break
     case '-w':

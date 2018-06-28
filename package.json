@@ -21,7 +21,7 @@
     "lint": "standard \"src/*.js\"",
     "lint:fix": "standard \"src/*.js\" --fix",
     "build": "rollup -c && shx chmod a+x bin/cli.js",
-    "watch": "rollup -w -c",
+    "watch": "rollup -c -w",
     "test": "npm run lint",
     "prepare": "npm test && npm run build"
   },
@@ -33,21 +33,22 @@
     "rollup": "^0.59.0",
     "rollup-plugin-babel": "^3",
     "rollup-plugin-commonjs": "^9",
+    "rollup-plugin-json": "^3.0.0",
     "rollup-plugin-node-resolve": "^3",
     "uglify-js": "^3"
   },
   "devDependencies": {
+    "ansi-escapes": "^3.1.0",
     "babel-core": "^6.26.3",
-    "babel-preset-env": "^1.7.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
-    "fast-async": "^6",
-    "nodent-runtime": "^3.2.0",
-    "shx": "^0.2.2",
+    "babel-preset-env": "^1.7.0",
     "date-time": "^2.1.0",
+    "fast-async": "^6",
     "mkdirp": "^0.5.1",
+    "nodent-runtime": "^3.2.0",
     "pretty-ms": "^3.1.0",
-    "ansi-escapes": "^3.1.0",
+    "shx": "^0.2.2",
     "signal-exit": "^3.0.2"
   },
   "files": [
