@@ -36,7 +36,7 @@
     "rollup-plugin-commonjs": "^9",
     "rollup-plugin-json": "^3.0.0",
     "rollup-plugin-node-resolve": "^3",
-    "uglify-js": "^3"
+    "uglify-js": "3.4.1"
   },
   "devDependencies": {
     "ansi-escapes": "^3.1.0",
