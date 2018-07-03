@@ -44,16 +44,19 @@ const defaultPlugins = {
         }
       }
     })
+
     debug('`resolve` options => ', opts)
+
     return resolve(opts)
   },
+
   json (defaults) {
-    const opts = assign({
-      indent: '  '
-    }, defaults)
+    const opts = { indent: '  ', ...defaults }
     return json(opts)
   },
+
   babel,
+
   commonjs
 }
 
