@@ -1,7 +1,7 @@
 import p from 'path'
 import fs from 'fs'
 import watch from './watch'
-import { Rollup, loadConfigFile } from 'rollup-worker'
+import { Rollup, loadConfigFile, version } from 'rollup-worker'
 
 let argv = process.argv.slice(2)
 let configFile = p.resolve(process.cwd(), '.fssrc.js')
@@ -11,6 +11,10 @@ let watchMode = false
 while (argv.length) {
   var k = argv.shift(), v = argv[0]
   switch (k) {
+    case '--version':
+      console.error(`v${version}`)
+      process.exit(1)
+      break
     case '-c':
     case '--config':
       if (v && v.charAt(0) !== '-') {
