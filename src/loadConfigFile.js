@@ -6,6 +6,8 @@ import { relativeId } from './utils'
 import { stderr, handleError } from './logging'
 import batchWarnings from './batchWarnings'
 
+import { json } from './plugins'
+
 export default function loadConfigFile (configFile, commandOptions = {}) {
   let silent = commandOptions.silent || false
   let warnings = batchWarnings()
@@ -15,6 +17,7 @@ export default function loadConfigFile (configFile, commandOptions = {}) {
       external (id) {
         return (id[0] !== '.' && !path.isAbsolute(id)) || id.slice(-5, id.length) === '.json'
       },
+      plugins: [ json() ],
       onwarn: warnings.add
     })
     .then((bundle) => {

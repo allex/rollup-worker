@@ -8,14 +8,10 @@
  */
 
 import path from 'path'
-import babel from 'rollup-plugin-babel'
-import commonjs from 'rollup-plugin-commonjs'
-import resolve from 'rollup-plugin-node-resolve'
-import json from 'rollup-plugin-json'
 import { deepAssign } from './utils'
+import { babel, commonjs, resolve, json } from './plugins'
 
 const debug = require('debug')('rollup-worker:plugins')
-
 const assign = deepAssign
 
 const defaultPlugins = {

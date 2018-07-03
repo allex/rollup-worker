@@ -6,8 +6,9 @@ import alternateScreen from './alternateScreen'
 import { relativeId } from '../utils'
 import { stderr, handleError } from '../logging'
 import batchWarnings from '../batchWarnings'
-import Worker from 'rollup-worker'
 import { printTimings } from './timings'
+
+import { Rollup, version }  from 'rollup-worker'
 
 const debug = require('debug')('rollup-worker:watch')
 
@@ -30,12 +31,12 @@ function watch (configFile, configs, command, silent = false) {
   var processConfigsErr
 
   function start (configs) {
-    screen.reset(chalk.underline('rollup-worker v' + Worker.VERSION))
+    screen.reset(chalk.underline('rollup-worker v' + version))
     var screenWriter = processConfigsErr || screen.reset
 
     debug(configs)
 
-    watcher = new Worker(configs).watch()
+    watcher = new Rollup(configs).watch()
     watcher.on('event', function (event) {
       switch (event.code) {
         case 'FATAL':
@@ -48,7 +49,7 @@ function watch (configFile, configs, command, silent = false) {
           handleError(event.error, true)
           break
         case 'START':
-          screenWriter(chalk.underline('rollup-worker v' + Worker.VERSION))
+          screenWriter(chalk.underline('rollup-worker v' + version))
           break
         case 'BUNDLE_START':
           if (!silent) {

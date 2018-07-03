@@ -1,7 +1,7 @@
 import p from 'path'
 import fs from 'fs'
-import Worker from 'rollup-worker'
 import watch from './watch'
+import { Rollup, loadConfigFile } from 'rollup-worker'
 
 let argv = process.argv.slice(2)
 let configFile = p.resolve(process.cwd(), '.fssrc.js')
@@ -29,9 +29,9 @@ if (!configFile || !fs.existsSync(configFile)) {
   process.exit(1)
 }
 
-const build = configs => new Worker(configs).build()
+const build = configs => new Rollup(configs).build()
 
-Worker.loadConfigFile(configFile)
+loadConfigFile(configFile)
   .then((configs) => {
     configs = configs.map(o => o.rollup || o)
     if (configs.some(o => o.entry)) {

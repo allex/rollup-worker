@@ -13,7 +13,7 @@ export default [ {
       exclude: 'node_modules/**' }),
     commonjs()
   ],
-  external: Object.keys(dependencies).concat([ 'fs', 'path', 'events', 'module', 'util' ]),
+  external: Object.keys(dependencies).concat([ 'fs', 'path', 'events', 'module', 'util', 'rollup-worker' ]),
   output: [
     { file: 'lib/rollup-worker.js', format: 'cjs' },
     { file: 'lib/rollup-worker.es.js', format: 'es' }

@@ -25,6 +25,8 @@ const debug = require('debug')('rollup-worker')
 const assign = Object.assign
 const isArray = Array.isArray
 
+const version = pkg.version
+
 function read (path) { // eslint-disable-line no-unused-vars
   return fs.readFileSync(path, 'utf8')
 }
@@ -85,7 +87,7 @@ const getCombinePlugins = (pi, po) => {
   return null
 }
 
-class Rollup {
+export class Rollup {
   /**
    * Multi-entry config for rollup bundle
    *
@@ -358,8 +360,8 @@ class Rollup {
   }
 }
 
-Rollup.VERSION = pkg.version
-Rollup.defaultPlugins = defaultPlugins
-Rollup.loadConfigFile = loadConfigFile
-
-export default Rollup
+export {
+  version,
+  defaultPlugins,
+  loadConfigFile
+}
