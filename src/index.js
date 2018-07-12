@@ -58,16 +58,17 @@ const uglifyjs = (code, options = {}) => {
   return uglify.minify(code, deepAssign({
     ie8: true,
     output: {
-      comments: function (n, c) {
-        /*
-        IMPORTANT: Please preserve 3rd-party library license info,
-        inspired from @allex/amd-build-worker/config/util.js
-        */
+      comments (n, c) {
+        /*! IMPORTANT: Please preserve 3rd-party library license info, inspired from @allex/amd-build-worker/config/util.js */
         var text = c.value, type = c.type
         if (type === 'comment2') {
           return /^!|@preserve|@license|@cc_on| Licensed/i.test(text)
         }
       }
+    },
+    compress: {
+      drop_console: true,
+      drop_debugger: true
     }
   }, options))
 }

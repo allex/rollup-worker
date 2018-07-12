@@ -1,6 +1,6 @@
 {
   "name": "rollup-worker",
-  "version": "1.0.6",
+  "version": "1.0.7-beta.1",
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
   "main": "lib/rollup-worker.js",
   "module": "lib/rollup-worker.es.js",
@@ -36,7 +36,7 @@
     "rollup-plugin-commonjs": "^9",
     "rollup-plugin-json5": "^1",
     "rollup-plugin-node-resolve": "^3",
-    "uglify-js": "3.4.4"
+    "uglify-js": "3.4.1"
   },
   "devDependencies": {
     "ansi-escapes": "^3.1.0",
