@@ -310,7 +310,8 @@ export class Rollup {
         await write(dest, source, bundle)
       }
 
-      if (!['es', 'cjs'].includes(output.format)) {
+      // Add minimize if not disabled explicitly.
+      if (minimize !== false && !['es', 'cjs'].includes(output.format)) {
         minimize = minimize || { ext: '.min' }
       }
 
@@ -329,7 +330,7 @@ export class Rollup {
 
         let s = code, banner = output.banner
         if (banner && s.substring(0, banner.length) !== banner) {
-          s = output.banner + s
+          s = `${output.banner.trim()}\n${s.trimLeft()}`
         }
 
         // write minify
