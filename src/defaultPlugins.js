@@ -16,7 +16,7 @@ const assign = deepAssign
 
 const defaultPlugins = {
   resolve (defaults) {
-    const opts = assign({}, defaults, {
+    const opts = assign({
       jsnext: true,
       module: true,
       main: true,
@@ -43,7 +43,7 @@ const defaultPlugins = {
           return mappedPath
         }
       }
-    })
+    }, defaults)
 
     debug('`resolve` options => ', opts)
 
