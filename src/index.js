@@ -59,10 +59,14 @@ const uglifyjs = (code, options = {}) => {
     ie8: true,
     output: {
       comments (n, c) {
-        /*! IMPORTANT: Please preserve 3rd-party library license info, inspired from @allex/amd-build-worker/config/util.js */
+        /*! IMPORTANT: Please preserve 3rd-party library license, Inspired from @allex/amd-build-worker/config/util.js */
         var text = c.value, type = c.type
         if (type === 'comment2') {
-          return /^!|@preserve|@license|@cc_on| Licensed/i.test(text)
+          var preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text)
+          if (preserve && !~text.indexOf('\n')) {
+            c.nlb = false
+          }
+          return preserve
         }
       }
     },
@@ -328,13 +332,14 @@ export class Rollup {
           dest = path.join(path.dirname(dest), `${path.basename(dest, '.js')}${ext}.js`)
         }
 
-        let s = code, banner = output.banner
-        if (banner && s.substring(0, banner.length) !== banner) {
-          s = `${output.banner.trim()}\n${s.trimLeft()}`
+        let banner = (output.banner || '').trim()
+        if (banner && code.substring(0, banner.length) !== banner) {
+          banner = banner.replace(/\r\n?|[\n\u2028\u2029]|\s*$/g, '\n')
+          code = banner + code
         }
 
         // write minify
-        await write(dest, s, bundle)
+        await write(dest, code, bundle)
       }
 
       return bundle
