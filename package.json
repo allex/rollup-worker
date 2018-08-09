@@ -1,6 +1,6 @@
 {
   "name": "rollup-worker",
-  "version": "1.0.7-beta.2",
+  "version": "1.0.7-beta.3",
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
   "main": "lib/rollup-worker.js",
   "module": "lib/rollup-worker.es.js",
