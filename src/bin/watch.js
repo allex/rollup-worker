@@ -33,9 +33,6 @@ function watch (configFile, configs, command, silent = false) {
   function start (configs) {
     screen.reset(chalk.underline('rollup-worker v' + version))
     var screenWriter = processConfigsErr || screen.reset
-
-    debug(configs)
-
     watcher = new Rollup(configs).watch()
     watcher.on('event', function (event) {
       switch (event.code) {
@@ -79,20 +76,7 @@ function watch (configFile, configs, command, silent = false) {
     })
   }
 
-  // catch ctrl+c, kill, and uncaught errors
-  var removeOnExit = signalExit(close)
-  process.on('uncaughtException', close)
-
-  // only listen to stdin if it is a pipe
-  if (!process.stdin.isTTY) {
-    process.stdin.on('end', close) // in case we ever support stdin!
-    process.stdin.resume()
-  }
-
   function close (err) {
-    if (err) {
-      console.error(err)
-    }
     removeOnExit()
     process.removeListener('uncaughtException', close)
     // removing a non-existent listener is a no-op
@@ -101,8 +85,19 @@ function watch (configFile, configs, command, silent = false) {
     if (watcher) { watcher.close() }
     if (configWatcher) { configWatcher.close() }
     if (err) {
+      stderr(err)
       process.exit(1)
     }
+  }
+
+  // catch ctrl+c, kill, and uncaught errors
+  var removeOnExit = signalExit(close)
+  process.on('uncaughtException', close)
+
+  // only listen to stdin if it is a pipe
+  if (!process.stdin.isTTY) {
+    process.stdin.on('end', close) // in case we ever support stdin!
+    process.stdin.resume()
   }
 
   start(initialConfigs)

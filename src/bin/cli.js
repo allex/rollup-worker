@@ -1,6 +1,7 @@
 import p from 'path'
 import fs from 'fs'
 import watch from './watch'
+import { relativeId } from '../utils'
 import { Rollup, loadConfigFile, version } from 'rollup-worker'
 
 let argv = process.argv.slice(2)
@@ -29,7 +30,18 @@ while (argv.length) {
 }
 
 if (!configFile || !fs.existsSync(configFile)) {
-  console.error('config file not valid. \n rollup-bundle --config <config_file.js> \n(exit 1)')
+  let msg
+  if (!configFile) {
+    msg = 'config file required'
+  } else {
+    msg = `config file "${relativeId(configFile)}" not found.`
+  }
+  console.error(`
+Usage: rollup-bundle [-w] [--config | -c] <config_file.js>
+
+> ${msg}
+`
+  )
   process.exit(1)
 }
 
@@ -49,7 +61,7 @@ loadConfigFile(configFile)
     }
   })
   .catch((e) => {
-    console.error(e)
+    console.error('Load config fails.', e)
     process.exit(1)
   })
 
