@@ -61,7 +61,7 @@ loadConfigFile(configFile)
     }
   })
   .catch((e) => {
-    console.error('Load config fails.', e)
+    console.error(e)
     process.exit(1)
   })
 
