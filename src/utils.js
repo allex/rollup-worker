@@ -99,14 +99,11 @@ export function deepAssign (...args) {
     throw new Error('deepAssign accept two and more argument')
   }
 
-  for (let i = args.length - 1; i > -1; i--) {
-    if (isPrimitive(args[i])) {
-      throw new TypeError('deepAssign only accept non primitive type')
-    }
-  }
-
   const target = args.shift()
-  args.forEach(source => _deepAssign(source, target))
+  if (isPrimitive(target)) {
+    throw new TypeError('deepAssign only accept non primitive type')
+  }
+  args.forEach(source => source && _deepAssign(source, target))
 
   return target
 }

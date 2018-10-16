@@ -77,7 +77,8 @@ const uglifyjs = (code, options = {}) => {
   }, options))
 }
 
-const isRollupPluginCtor = o => typeof o === 'function' && ['resolveId', 'transform', 'load'].filter(k => !!o[k]).length === 0
+const isRollupPluginCtor = o =>
+  typeof o === 'function' && !(['resolveId', 'transform', 'load'].some(k => !!o[k]))
 
 const isNativeRollupCfg = o => {
   if (!isArray(o)) o = [ o ]
@@ -179,32 +180,30 @@ export class Rollup {
 
     const output = rollupCfg.output
 
-    const list = plugins.map(p => {
-      const isBuiltin = typeof p === 'string'
-      const name = isBuiltin ? p : p.name
+    return plugins.map(p => {
+      const byName = typeof p === 'string'
+      let name = byName ? p : p.name
 
-      let defaults
-      if (name) {
-        defaults = this.getopt(name, rollupCfg)
-        debug(`defaults of plugin "${name}" for "${output.format} => ${relativeId(output.file)}":`, defaults)
+      if (byName) {
+        name = p
+        p = defaultPlugins.get(name)
       }
 
-      let pluginCtor = isRollupPluginCtor(p) ? p : null
-      if (isBuiltin) {
-        pluginCtor = defaultPlugins[p]
-        if (!pluginCtor) {
-          throw new Error(`The built-in plugin invalid. [${p}]`)
+      // apply plugin settings if a plugin constructor
+      if (isRollupPluginCtor(p)) {
+        let settings
+        if (name) {
+          settings = this.getopt(name, rollupCfg)
+          const out = relativeId(output.file)
+          debug(`"plugin:${name}" for "${out}"`, settings || 'NULL')
+        } else {
+          debug(`anonymous plugin without any settings.`, p)
         }
-      }
-      // apply plugin settings
-      if (pluginCtor) {
-        p = pluginCtor(defaults || {})
+        p = p(settings)
       }
 
       return p
     })
-
-    return list
   }
 
   /**

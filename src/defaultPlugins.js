@@ -12,11 +12,10 @@ import { deepAssign } from './utils'
 import { babel, commonjs, resolve, json } from './plugins'
 
 const debug = require('debug')('rollup-worker:plugins')
-const assign = deepAssign
 
-const defaultPlugins = {
-  resolve (defaults) {
-    const opts = assign({
+const defaultPluginOpts = {
+  resolve (settings) {
+    return deepAssign({
       jsnext: true,
       module: true,
       main: true,
@@ -43,21 +42,43 @@ const defaultPlugins = {
           return mappedPath
         }
       }
-    }, defaults)
-
-    debug('`resolve` options => ', opts)
-
-    return resolve(opts)
+    }, settings)
   },
 
-  json (defaults) {
-    const opts = { indent: '  ', ...defaults }
-    return json(opts)
+  json (settings) {
+    return { indent: '  ', ...settings }
   },
 
-  babel,
+  babel (settings) {
+    return { ...settings }
+  },
 
-  commonjs
+  commonjs (settings) {
+    return {
+      extensions: [ '.js', '.ts', '.coffee' ],
+      ...settings
+    }
+  }
 }
 
-export default defaultPlugins
+const pluginImpls = {
+  resolve, json, babel, commonjs
+}
+
+export default {
+  get (name) {
+    const fn = pluginImpls[name]
+    if (typeof fn !== 'function') {
+      throw new Error(`Get plugin by name failed, name="${name}"`)
+    }
+    return (...args) => {
+      const optFn = defaultPluginOpts[name]
+      if (optFn) {
+        // merge plugin default options
+        args[0] = optFn(args[0])
+      }
+      debug(`construct plugin (name: "${name}") =>`, args[0])
+      return fn.apply(null, args)
+    }
+  }
+}
