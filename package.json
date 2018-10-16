@@ -4,10 +4,7 @@
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
   "main": "lib/rollup-worker.js",
   "module": "lib/rollup-worker.es.js",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/allex/rollup-worker.git"
-  },
+  "repository": "allex/rollup-worker",
   "keywords": [
     "rollup",
     "bundle",
@@ -28,6 +25,7 @@
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",
   "dependencies": {
+    "@allex/rollup-plugin-node-resolve": "next",
     "babel-core": "6",
     "chalk": "^2.4.1",
     "debug": "^3.1.0",
@@ -35,7 +33,6 @@
     "rollup-plugin-babel": "^3",
     "rollup-plugin-commonjs": "^9",
     "rollup-plugin-json5": "^1",
-    "rollup-plugin-node-resolve": "^3",
     "uglify-js": "3.4.1"
   },
   "devDependencies": {

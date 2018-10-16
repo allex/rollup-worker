@@ -15,10 +15,10 @@ import rollup from 'rollup'
 import uglify from 'uglify-js'
 import mkdirp from 'mkdirp'
 import chalk from 'chalk'
-import defaultPlugins from './defaultPlugins'
 import loadConfigFile from './loadConfigFile'
-import { result, sequence, deepAssign, relativeId, mergeArray } from './utils'
 import { stderr } from './logging'
+import { default as defaultPlugins, defaultPluginOpts } from './plugins'
+import { result, sequence, deepAssign, relativeId, mergeArray } from './utils'
 
 const pkg = require('../package.json')
 const debug = require('debug')('rollup-worker')
@@ -155,7 +155,7 @@ export class Rollup {
 
   getopt (name, ...args) {
     const cfg = this.config
-    const opt = (cfg.pluginOptions || cfg.plugins || {})[name]
+    const opt = (cfg.pluginOptions || cfg.plugins || defaultPluginOpts)[name]
     return result(opt, ...args)
   }
 
@@ -195,7 +195,7 @@ export class Rollup {
         if (name) {
           settings = this.getopt(name, rollupCfg)
           const out = relativeId(output.file)
-          debug(`"plugin:${name}" for "${out}"`, settings || 'NULL')
+          debug(`"plugin:${name}" for "${out}" =>`, settings || 'NULL')
         } else {
           debug(`anonymous plugin without any settings.`, p)
         }

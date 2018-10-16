@@ -6,7 +6,9 @@ import { relativeId } from './utils'
 import { stderr, handleError } from './logging'
 import batchWarnings from './batchWarnings'
 
-import { json } from './plugins'
+import { default as defaultPlugins } from './plugins'
+
+const json = defaultPlugins.get('json')
 
 export default function loadConfigFile (configFile, commandOptions = {}) {
   let silent = commandOptions.silent || false
