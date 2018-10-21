@@ -14,6 +14,7 @@ import path from 'path'
 import rollup from 'rollup'
 import uglify from 'uglify-js'
 import mkdirp from 'mkdirp'
+import prettyMs from 'pretty-ms'
 import chalk from 'chalk'
 import loadConfigFile from './loadConfigFile'
 import { stderr } from './logging'
@@ -35,14 +36,9 @@ function read (path) { // eslint-disable-line no-unused-vars
 }
 
 function write (dest, code) {
-  return new Promise(function (resolve, reject) {
+  return new Promise((resolve, reject) => {
     mkdirp.sync(path.dirname(dest))
-    fs.writeFile(dest, code, function (err) {
-      if (err) return reject(err)
-      dest = relativeId(dest)
-      stderr(chalk.cyan('\u2192 ' + chalk.bold(dest) + ' ' + getSize(code)))
-      resolve()
-    })
+    fs.writeFile(dest, code, (err) => err ? reject(err) : resolve())
   })
 }
 
@@ -229,7 +225,7 @@ export class Rollup {
    *  input: {
    *    input: 'path/foo.js',
    *    ...
-   *  ],
+   *  },
    *  output: [
    *    { [ outputConfig ... ] },
    *    ...
@@ -311,6 +307,11 @@ export class Rollup {
 
     debug('normalized rollup entries => \n%O', list)
 
+    let start = Date.now()
+    let files = list.map(({ input, output: t }) => relativeId(t.file || t.dir))
+
+    stderr(chalk.cyan('build ' + chalk.bold(relativeId(entry.input)) + ' \u2192 ' + chalk.bold(files.join(', ')) + ' ...'))
+
     return sequence(list, async ({ input, output }) => {
       // create a bundle
       let bundle = await rollup.rollup(input)
@@ -325,7 +326,8 @@ export class Rollup {
 
       if (!minimize) {
         // write bundle result first
-        await write(dest, source, bundle)
+        await bundle.write(output)
+        stderr(chalk.green(`created ${chalk.bold(relativeId(output.file))} (${getSize(source)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       }
 
       // Add minimize if not disabled explicitly.
@@ -334,6 +336,7 @@ export class Rollup {
       }
 
       if (minimize) {
+        let start = Date.now()
         let { code, error } = uglifyjs(source, this.getopt('uglifyjs'))
         if (error) {
           throw error
@@ -353,7 +356,8 @@ export class Rollup {
         }
 
         // write minify
-        await write(dest, code, bundle)
+        await write(dest, code, start)
+        stderr(chalk.green(`created ${chalk.bold(relativeId(dest))} (${getSize(code)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       }
 
       return bundle
@@ -361,9 +365,7 @@ export class Rollup {
   }
 
   build () {
-    return sequence(this.config.entry, o => {
-      return this.mapBundles(o)
-    })
+    return sequence(this.config.entry, o => this.mapBundles(o))
   }
 
   watch (options) {
