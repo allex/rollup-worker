@@ -27,6 +27,9 @@ const isArray = Array.isArray
 
 const version = pkg.version
 
+// some builtin plugins
+const builtins = [ 'json', 'replace' ]
+
 function read (path) { // eslint-disable-line no-unused-vars
   return fs.readFileSync(path, 'utf8')
 }
@@ -155,8 +158,20 @@ export class Rollup {
 
   getopt (name, ...args) {
     const cfg = this.config
-    const opt = (cfg.pluginOptions || cfg.plugins || defaultPluginOpts)[name]
-    return result(opt, ...args)
+    let opt = (cfg.pluginOptions || cfg.plugins || 0)[name]
+
+    // project local plugin options
+    if (opt) {
+      opt = result(opt, ...args)
+    }
+
+    // defaults
+    let f = defaultPluginOpts[name]
+    if (f) {
+      opt = f(opt)
+    }
+
+    return opt
   }
 
   _checkExternal (id, entry) {
@@ -169,13 +184,13 @@ export class Rollup {
 
   _normalizePlugins (plugins, rollupCfg) {
     if (!plugins) {
+      // default plugins
       plugins = [ 'babel', 'resolve', 'commonjs' ]
     } else {
       plugins = plugins.filter(p => !!p)
     }
 
-    // add some builtin plugins
-    const builtins = [ 'json' ]
+    // combin builtin plugins
     plugins = mergeArray(builtins, plugins, { pk: 'name' })
 
     const output = rollupCfg.output

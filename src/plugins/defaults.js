@@ -7,13 +7,21 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
+// some builtin plugins
 import babel from 'rollup-plugin-babel'
 import commonjs from 'rollup-plugin-commonjs'
 import resolve from '@allex/rollup-plugin-node-resolve'
 import json from 'rollup-plugin-json5'
+import replace from 'rollup-plugin-replace'
+
+import { deepAssign } from '../utils'
 
 export const pluginImpls = {
-  resolve, json, babel, commonjs
+  resolve,
+  babel,
+  commonjs,
+  json,
+  replace
 }
 
 export const defaultPluginOpts = {
@@ -46,9 +54,14 @@ export const defaultPluginOpts = {
   },
 
   typescript (settings) {
-    return {
+    return deepAssign({
       check: true,
       abortOnError: false,
-      ...settings }
+      tsconfigOverride: {
+        compilerOptions: {
+          newLine: 'lf'
+        }
+      }
+    }, settings)
   }
 }
