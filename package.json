@@ -45,6 +45,7 @@
     "fast-async": "^6",
     "mkdirp": "^0.5.1",
     "nodent-runtime": "^3.2.0",
+    "pretty-bytes": "^5.1.0",
     "pretty-ms": "^3.1.0",
     "shx": "^0.2.2",
     "signal-exit": "^3.0.2"

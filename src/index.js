@@ -14,6 +14,7 @@ import path from 'path'
 import rollup from 'rollup'
 import uglify from 'uglify-js'
 import mkdirp from 'mkdirp'
+import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
 import chalk from 'chalk'
 import loadConfigFile from './loadConfigFile'
@@ -40,16 +41,6 @@ function write (dest, code) {
     mkdirp.sync(path.dirname(dest))
     fs.writeFile(dest, code, (err) => err ? reject(err) : resolve())
   })
-}
-
-const getSize = code => {
-  let v = code.length / 1024
-  let u = 'kb'
-  if (v > 1024) {
-    v = v / 1024
-    u = 'Mb'
-  }
-  return v.toFixed(2) + u
 }
 
 const uglifyjs = (code, options = {}) => {
@@ -327,7 +318,7 @@ export class Rollup {
       if (!minimize) {
         // write bundle result first
         await bundle.write(output)
-        stderr(chalk.green(`created ${chalk.bold(relativeId(output.file))} (${getSize(source)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
+        stderr(chalk.green(`created ${chalk.bold(relativeId(output.file))} (${prettyBytes(source.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       }
 
       // Add minimize if not disabled explicitly.
@@ -357,7 +348,7 @@ export class Rollup {
 
         // write minify
         await write(dest, code, start)
-        stderr(chalk.green(`created ${chalk.bold(relativeId(dest))} (${getSize(code)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
+        stderr(chalk.green(`created ${chalk.bold(relativeId(dest))} (${prettyBytes(code.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       }
 
       return bundle
