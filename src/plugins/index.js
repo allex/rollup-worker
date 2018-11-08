@@ -13,14 +13,14 @@ export default {
     if (typeof fn !== 'function') {
       throw new Error(`Get plugin by name failed, name="${name}"`)
     }
-    return (...args) => {
+    return (opt) => {
       const optFn = defaultPluginOpts[name]
       if (optFn) {
         // merge plugin default options
-        args[0] = optFn(args[0])
+        opt = optFn(opt)
       }
-      debug(`construct plugin "${name}" =>`, args[0])
-      return fn.apply(null, args)
+      debug(`construct plugin "${name}" =>`, opt)
+      return fn.apply(null, [opt])
     }
   }
 }

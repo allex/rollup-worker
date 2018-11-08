@@ -63,5 +63,12 @@ export const defaultPluginOpts = {
         }
       }
     }, settings)
+  },
+
+  replace (settings) {
+    return {
+      'NODE_ENV': process.env.NODE_ENV || 'production',
+      ...settings
+    }
   }
 }
