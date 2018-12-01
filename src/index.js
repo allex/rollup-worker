@@ -44,6 +44,7 @@ function write (dest, code) {
 }
 
 const uglifyjs = (code, options = {}) => {
+  const commentsCache = {}
   // https://github.com/mishoo/UglifyJS2#minify-options
   return uglify.minify(code, deepAssign({
     ie8: true,
@@ -53,8 +54,13 @@ const uglifyjs = (code, options = {}) => {
         var text = c.value, type = c.type
         if (type === 'comment2') {
           var preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text)
+          // remove duplicates comments
+          preserve = preserve && !commentsCache[text]
           if (preserve && !~text.indexOf('\n')) {
             c.nlb = false
+          }
+          if (preserve) {
+            commentsCache[text] = 1
           }
           return preserve
         }
