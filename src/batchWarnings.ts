@@ -1,6 +1,6 @@
 import chalk from 'chalk'
-import { relativeId } from './utils'
 import { stderr } from './logging'
+import { relativeId } from './utils'
 
 export default function batchWarnings () {
   let allWarnings = new Map()
@@ -19,17 +19,17 @@ export default function batchWarnings () {
     },
     flush () {
       if (count === 0) { return }
-      let codes = Array.from(allWarnings.keys()).sort(function (a, b) {
+      const codes = Array.from(allWarnings.keys()).sort(function (a, b) {
         return allWarnings.get(b).length - allWarnings.get(a).length
       })
       codes.forEach(code => {
-        let warnings = allWarnings.get(code)
+        const warnings = allWarnings.get(code)
         warnings.forEach(warning => {
           stderr(chalk.bold.yellow('(!)') + ' ' + chalk.bold.yellow(warning.message))
           if (warning.url) { info(warning.url) }
-          let id = (warning.loc && warning.loc.file) || warning.id
+          const id = (warning.loc && warning.loc.file) || warning.id
           if (id) {
-            let loc = warning.loc
+            const loc = warning.loc
               ? relativeId(id) + ': (' + warning.loc.line + ':' + warning.loc.column + ')'
               : relativeId(id)
             stderr(chalk.bold(relativeId(loc)))

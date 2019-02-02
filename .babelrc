@@ -6,12 +6,11 @@
       "useBuiltIns": false,
       "exclude": ["transform-regenerator", "transform-async-to-generator"],
       "targets": {
-        "node": "5.12.0"
+        "node": "7.10.1"
       }
     }]
   ],
   "plugins": [
-    [ "fast-async", {} ],
     [ "transform-class-properties", { "spec": true } ],
     [ "transform-object-rest-spread", { "useBuiltIns": true } ]
   ],

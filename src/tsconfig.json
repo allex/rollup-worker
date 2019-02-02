@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "diagnostics": true,
+    "downlevelIteration": false,
+    "lib": ["es5", "es6", "dom", "es2016"],
+    "noEmitOnError": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "pretty": true,
+    "skipLibCheck": true,
+    "target": "es5",
+    "newLine": "lf",
+    "outFile": "../lib/rollup.js"
+  },
+  "files": [
+    "index.ts"
+  ]
+}

@@ -119,12 +119,12 @@ export function relativeId (id) {
 }
 
 export function sequence (array, fn) {
-  let results = []
+  const results = []
   let promise = Promise.resolve()
   function next (member, i) {
     return fn(member).then(function (value) { return (results[i] = value) })
   }
-  let loop = function (i) {
+  const loop = function (i) {
     promise = promise.then(function () { return next(array[i], i) })
   }
   for (let i = 0; i < array.length; i += 1) {

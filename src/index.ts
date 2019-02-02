@@ -7,39 +7,43 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
-'use strict'
-
+import chalk from 'chalk'
 import fs from 'fs'
-import path from 'path'
-import rollup from 'rollup'
-import uglify from 'uglify-js'
 import mkdirp from 'mkdirp'
+import path from 'path'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
-import chalk from 'chalk'
+import rollup from 'rollup'
+import progressPlugin from 'rollup-plugin-progress'
+import uglify from 'uglify-js'
 import loadConfigFile from './loadConfigFile'
 import { stderr } from './logging'
-import { default as defaultPlugins, defaultPluginOpts } from './plugins'
-import { result, sequence, deepAssign, relativeId, mergeArray } from './utils'
+import { defaultPluginOpts, getPlugin } from './plugins'
+import { deepAssign, mergeArray, relativeId, result, sequence, isFunction, isArray, isString } from './utils'
 
 const pkg = require('../package.json')
 const debug = require('debug')('rollup-worker')
 const assign = Object.assign
-const isArray = Array.isArray
 
 const version = pkg.version
 
 // some builtin plugins
 const builtins = [ 'json', 'replace' ]
 
+interface OutputMinify {
+  code: string;
+  map?: SourceMap;
+  error?: Error
+}
+
 function read (path) { // eslint-disable-line no-unused-vars
   return fs.readFileSync(path, 'utf8')
 }
 
-function write (dest, code) {
+function write (file, code): Promise<any> {
   return new Promise((resolve, reject) => {
-    mkdirp.sync(path.dirname(dest))
-    fs.writeFile(dest, code, (err) => err ? reject(err) : resolve())
+    mkdirp.sync(path.dirname(file))
+    fs.writeFile(file, code, (err) => err ? reject(err) : resolve())
   })
 }
 
@@ -51,9 +55,9 @@ const uglifyjs = (code, options = {}) => {
     output: {
       comments (n, c) {
         /*! IMPORTANT: Please preserve 3rd-party library license, Inspired from @allex/amd-build-worker/config/util.js */
-        var text = c.value, type = c.type
+        const text = c.value, type = c.type
         if (type === 'comment2') {
-          var preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text)
+          let preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text)
           // remove duplicates comments
           preserve = preserve && !commentsCache[text]
           if (preserve && !~text.indexOf('\n')) {
@@ -73,8 +77,10 @@ const uglifyjs = (code, options = {}) => {
   }, options))
 }
 
+const printError = stderr
+
 const isRollupPluginCtor = o =>
-  typeof o === 'function' && !(['resolveId', 'transform', 'load'].some(k => !!o[k]))
+  isFunction(o) && !(['resolveId', 'transform', 'load'].some(k => !!o[k]))
 
 const isNativeRollupCfg = o => {
   if (!isArray(o)) o = [ o ]
@@ -89,43 +95,33 @@ const getCombinePlugins = (pi, po) => {
   return null
 }
 
+export interface Kv<T = any> {
+  [key: string]: T;
+}
+
+export interface PluginOption {
+  [name: string]: any;
+}
+
+export interface BundleEntry {
+}
+
+export interface WorkerOptions {
+  destDir: string;
+  pluginOptions: KV<PluginOption>;
+  entry: BundleEntry[];
+}
+
 export class Rollup {
+  private config: any;
+
   /**
    * Multi-entry config for rollup bundle
    *
    * @constructor
    * @param {Object} config The config for multiple bundle
-   *
-   * ```
-   * {
-   *   destDir: path.join(__dirname, '..', './dist'),
-   *   pluginOptions: {
-   *    resolve: { ... },
-   *    commonjs: { ... },
-   *    babel: { ... }
-   *   },
-   *   entry: [
-   *    {
-   *      // more input options: https://rollupjs.org/guide/en#inputOptions
-   *      input: 'src/index.js',
-   *      plugins,
-   *      globals,
-   *      external,
-   *      ...
-   *      output: [
-   *        {
-   *          // more ouput options: https://rollupjs.org/guide/en#outputoptions
-   *          globals, format, name, file, banner, ...
-   *        },
-   *        ...
-   *      ]
-   *    },
-   *    ...
-   *   ]
-   * }
-   * ```
    */
-  constructor (options) {
+  constructor (options: WorkerOptions) {
     if (!options) {
       throw new Error('Illegal constructor arguments.')
     }
@@ -149,7 +145,7 @@ export class Rollup {
     }, options)
   }
 
-  getopt (name, ...args) {
+  getPluginCfg (name: string, ...args: any[]) {
     const cfg = this.config
     let opt = (cfg.pluginOptions || cfg.plugins || 0)[name]
 
@@ -159,7 +155,7 @@ export class Rollup {
     }
 
     // defaults
-    let f = defaultPluginOpts[name]
+    const f = defaultPluginOpts[name]
     if (f) {
       opt = f(opt)
     }
@@ -189,21 +185,30 @@ export class Rollup {
     const output = rollupCfg.output
 
     return plugins.map(p => {
-      const byName = typeof p === 'string'
-      let name = byName ? p : p.name
-
-      if (byName) {
+      let name
+      if (isString(p)) {
         name = p
-        p = defaultPlugins.get(name)
+        p = null
+      }
+
+      // [ name, constructor ]
+      if (isArray(p)) {
+        name = p[0]
+        p = p[1]
+      }
+
+      if (!p && name) {
+        p = getPlugin(name)
       }
 
       // apply plugin settings if a plugin constructor
       if (isRollupPluginCtor(p)) {
         let settings
+        name = name || p.$name || p.name
         if (name) {
-          settings = this.getopt(name, rollupCfg)
+          settings = this.getPluginCfg(name, rollupCfg)
           const out = relativeId(output.file)
-          debug(`"plugin:${name}" for "${out}" =>`, settings || 'NULL')
+          debug(`plugin settings of "${name}" for "${out}" =>`, settings || 'nil')
         } else {
           debug(`anonymous plugin without any settings.`, p)
         }
@@ -219,10 +224,7 @@ export class Rollup {
    *
    * ```
    * {
-   *  input: {
-   *    input: 'path/foo.js',
-   *    ...
-   *  },
+   *  input: { input: 'path/foo.js', ...  },
    *  output: [
    *    { [ outputConfig ... ] },
    *    ...
@@ -233,31 +235,31 @@ export class Rollup {
   _normalizeEntry (entry) {
     entry = assign({}, entry)
 
-    let self = this
-    let destDir = self.config.destDir || '.'
+    const self = this
+    const destDir = self.config.destDir || '.'
 
     let { targets, output, globals } = entry
     ;[ 'targets', 'output', 'globals' ].forEach(k => delete entry[k])
 
-    output = output || targets
+    let list = output || targets
     globals = globals || {}
 
-    if (!output) {
+    if (!list) {
       throw new Error('You must specify `option.output`.')
     }
 
-    if (!isArray(output)) {
-      output = [ output ]
+    if (!isArray(list)) {
+      list = [ list ]
     }
 
-    return output.map(o => {
+    return list.map(o => {
       const { format } = o
       if (!format) {
         throw new Error('target output format required.')
       }
 
       // merge with some defaults
-      let output = assign({ globals, indent: '  ' }, o)
+      const output = assign({ globals, indent: '  ' }, o)
       let input = assign({}, entry)
 
       // resolve output file with base dir
@@ -286,16 +288,16 @@ export class Rollup {
         return !/umd|iife/.test(format) && isDependency
       }
 
-      let _external = input.external; delete input.external // fn(id, format, defaultFn)
+      const _external = input.external; delete input.external // fn(id, format, defaultFn)
 
       const external = !_external
         ? defaultExternalFn
-        : (typeof _external === 'function'
+        : (isFunction(_external)
           ? (id) => _external(id, format, defaultExternalFn) : _external)
 
       input = assign({ plugins, external }, input)
 
-      return { input, output }
+      return { i: input, o: output }
     })
   }
 
@@ -304,57 +306,81 @@ export class Rollup {
 
     debug('normalized rollup entries => \n%O', list)
 
+    const files = list.map(({ o }) => relativeId(o.file || o.dir))
     let start = Date.now()
-    let files = list.map(({ input, output: t }) => relativeId(t.file || t.dir))
 
     stderr(chalk.cyan('build ' + chalk.bold(relativeId(entry.input)) + ' \u2192 ' + chalk.bold(files.join(', ')) + ' ...'))
 
-    return sequence(list, async ({ input, output }) => {
-      // create a bundle
-      let bundle = await rollup.rollup(input)
-      let { file: dest, minimize } = output
+    return sequence(list, async ({ i, o }): Promise<RollupBuild> => {
 
-      if (dest && /\.min\./.test(path.basename(dest))) {
+      // create a bundle
+      const bundle: RollupBuild = await rollup.rollup(i)
+      let { file, minimize } = o
+
+      if (file && /\.min\./.test(path.basename(file))) {
         minimize = true
       }
 
       // generate code and a sourcemap
-      const { code: source, map } = await bundle.generate(output) // eslint-disable-line no-unused-vars
+      let { output: [{ code }] }: RollupOutput = await bundle.generate(o) // eslint-disable-line no-unused-vars
 
       if (!minimize) {
         // write bundle result first
-        await bundle.write(output)
-        stderr(chalk.green(`created ${chalk.bold(relativeId(output.file))} (${prettyBytes(source.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
+        await bundle.write(o)
+        stderr(chalk.green(`created ${chalk.bold(relativeId(o.file))} (${prettyBytes(code.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       }
 
       // Add minimize if not disabled explicitly.
-      if (minimize !== false && !['es', 'cjs'].includes(output.format)) {
+      if (minimize !== false && !['es', 'cjs'].includes(o.format)) {
         minimize = minimize || { ext: '.min' }
       }
 
       if (minimize) {
-        let start = Date.now()
-        let { code, error } = uglifyjs(source, this.getopt('uglifyjs'))
-        if (error) {
-          throw error
+        start = Date.now()
+        const minified: OutputMinify = uglifyjs({ [file]: code }, this.getPluginCfg('uglifyjs'))
+
+        const ex = minified.error
+        if (ex) {
+          if (ex.name === 'SyntaxError') {
+            printError('Parse error at ' + ex.filename + ':' + ex.line + ',' + ex.col);
+            const col = ex.col;
+            const lines = code.split(/\r?\n/);
+            let line = lines[ex.line - 1];
+            if (!line && !col) {
+              line = lines[ex.line - 2];
+              col = line.length;
+            }
+            if (line) {
+              const limit = 70;
+              if (col > limit) {
+                line = line.slice(col - limit);
+                col = limit;
+              }
+              printError(line.slice(0, 80));
+              printError(line.slice(0, col).replace(/\S/g, ' ') + '^');
+            }
+          }
+          throw ex
         }
+
+        code = minified.code
 
         // generate a extra minimize file (*.min.js)
         let ext = minimize.ext
         if (ext) {
           ext = ext.charAt(0) === '.' ? ext : `.${ext}`
-          dest = path.join(path.dirname(dest), `${path.basename(dest, '.js')}${ext}.js`)
+          file = path.join(path.dirname(file), `${path.basename(file, '.js')}${ext}.js`)
         }
 
-        let banner = (output.banner || '').trim()
+        let banner = (o.banner || '').trim()
         if (banner && code.substring(0, banner.length) !== banner) {
           banner = banner.replace(/\r\n?|[\n\u2028\u2029]|\s*$/g, '\n')
           code = banner + code
         }
 
         // write minify
-        await write(dest, code, start)
-        stderr(chalk.green(`created ${chalk.bold(relativeId(dest))} (${prettyBytes(code.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
+        await write(file, code, start)
+        stderr(chalk.green(`created ${chalk.bold(relativeId(file))} (${prettyBytes(code.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       }
 
       return bundle
@@ -372,8 +398,8 @@ export class Rollup {
     }, options)
     this.config.entry.forEach(entry => {
       const list = this._normalizeEntry(entry)
-      list.forEach(({ input, output }) => {
-        watchOptions.push({ ...input, output, watch })
+      list.forEach(({ i, o }) => {
+        watchOptions.push({ ...i, output: o, watch })
       })
     })
     return rollup.watch(watchOptions)
@@ -382,6 +408,6 @@ export class Rollup {
 
 export {
   version,
-  defaultPlugins,
+  getPlugin,
   loadConfigFile
 }

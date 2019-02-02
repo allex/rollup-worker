@@ -1,19 +1,21 @@
-import p from 'path'
 import fs from 'fs'
-import watch from './watch'
-import { relativeId } from '../utils'
-import { Rollup, loadConfigFile, version } from 'rollup-worker'
+import p from 'path'
 
-let argv = process.argv.slice(2)
+import { loadConfigFile, Rollup, version } from 'rollup-worker'
+import { stderr } from '../logging'
+import { relativeId } from '../utils'
+import watch from './watch'
+
+const argv = process.argv.slice(2)
 let configFile = p.resolve(process.cwd(), '.fssrc.js')
 let watchMode = false
 
 // parse --config from argv
 while (argv.length) {
-  var k = argv.shift(), v = argv[0]
+  const k = argv.shift(), v = argv[0]
   switch (k) {
     case '--version':
-      console.error(`v${version}`)
+      stderr(`v${version}`)
       process.exit(1)
       break
     case '-c':
@@ -36,7 +38,7 @@ if (!configFile || !fs.existsSync(configFile)) {
   } else {
     msg = `config file "${relativeId(configFile)}" not found.`
   }
-  console.error(`
+  stderr(`
 Usage: rollup-bundle [-w] [--config | -c] <config_file.js>
 
 > ${msg}
@@ -60,9 +62,12 @@ loadConfigFile(configFile)
       return build(configs)
     }
   })
-  .catch((e) => {
-    console.error(e)
-    process.exit(1)
-  })
+  .catch((e) => fatal(e))
 
-export default { build, watch }
+function fatal(message) {
+  if (message instanceof Error) message = message.stack.replace(/^\S*?Error:/, "ERROR:")
+  stderr(message);
+  process.exit(1);
+}
+
+export { build, watch }

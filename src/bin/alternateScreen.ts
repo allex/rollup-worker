@@ -12,9 +12,9 @@ function alternateScreen (enabled) {
   if (!enabled) {
     let needAnnounce = true
     return {
-      open: function () { },
-      close: function () { },
-      reset: function (heading) {
+      open () { },
+      close () { },
+      reset (heading) {
         if (needAnnounce) {
           stderr(heading)
           needAnnounce = false
@@ -23,17 +23,17 @@ function alternateScreen (enabled) {
     }
   }
   return {
-    open: function () {
+    open () {
       if (supportsAnsi) {
         process.stderr.write(SHOW_ALTERNATE_SCREEN)
       }
     },
-    close: function () {
+    close () {
       if (supportsAnsi) {
         process.stderr.write(HIDE_ALTERNATE_SCREEN)
       }
     },
-    reset: function (heading) {
+    reset (heading) {
       stderr('' + ansiEscapes.eraseScreen + ansiEscapes.cursorTo(0, 0) + heading)
     }
   }
