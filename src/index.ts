@@ -15,11 +15,11 @@ import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
 import rollup from 'rollup'
 import progressPlugin from 'rollup-plugin-progress'
-import uglify from 'uglify-js'
+import uglify from 'terser'
 import loadConfigFile from './loadConfigFile'
 import { stderr } from './logging'
 import { defaultPluginOpts, getPlugin } from './plugins'
-import { deepAssign, mergeArray, relativeId, result, sequence, isFunction, isArray, isString } from './utils'
+import { deepAssign, isArray, isFunction, isString, mergeArray, relativeId, result, sequence } from './utils'
 
 const pkg = require('../package.json')
 const debug = require('debug')('rollup-worker')
@@ -73,7 +73,8 @@ const uglifyjs = (code, options = {}) => {
     compress: {
       drop_console: true,
       drop_debugger: true
-    }
+    },
+    module: true
   }, options))
 }
 
