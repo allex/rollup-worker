@@ -60,11 +60,13 @@ const uglifyjs = (code, options = {}) => {
           let preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text)
           // remove duplicates comments
           preserve = preserve && !commentsCache[text]
-          if (preserve && !~text.indexOf('\n')) {
-            c.nlb = false
-          }
           if (preserve) {
+            if (!~text.indexOf('\n')) {
+              c.nlb = false
+            }
             commentsCache[text] = 1
+            // strip blanks
+            c.value = text.replace(/\n\s\s*/g, '\n ')
           }
           return preserve
         }
