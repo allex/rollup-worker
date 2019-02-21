@@ -13,26 +13,24 @@ import { Rollup, version }  from 'rollup-worker'
 const debug = require('debug')('rollup-worker:watch')
 
 function watch (configFile, configs, command, silent = false) {
-  var isTTY = Boolean(process.stderr.isTTY)
+  const isTTY = Boolean(process.stderr.isTTY)
 
   const processConfigs = (configs) => {
     return configs
   }
 
-  var warnings = batchWarnings()
-  var initialConfigs = processConfigs(configs)
-  var clearScreen = [ initialConfigs ].every(function (config) { return (config.watch || 0).clearScreen !== false })
+  const warnings = batchWarnings()
+  const initialConfigs = processConfigs(configs)
+  const clearScreen = [ initialConfigs ].every(function (config) { return (config.watch || 0).clearScreen !== false })
 
-  var screen = alternateScreen(isTTY && clearScreen)
+  const screen = alternateScreen(isTTY && clearScreen)
   screen.open()
 
-  var watcher
-  var configWatcher
-  var processConfigsErr
+  let watcher
 
   function start (configs) {
     screen.reset(chalk.underline('rollup-worker v' + version))
-    var screenWriter = processConfigsErr || screen.reset
+    const screenWriter = configs.processConfigsErr || screen.reset
     watcher = new Rollup(configs).watch()
     watcher.on('event', function (event) {
       switch (event.code) {
@@ -83,7 +81,6 @@ function watch (configFile, configs, command, silent = false) {
     process.stdin.removeListener('end', close)
     screen.close()
     if (watcher) { watcher.close() }
-    if (configWatcher) { configWatcher.close() }
     if (err) {
       stderr(err)
       process.exit(1)
@@ -91,7 +88,7 @@ function watch (configFile, configs, command, silent = false) {
   }
 
   // catch ctrl+c, kill, and uncaught errors
-  var removeOnExit = signalExit(close)
+  const removeOnExit = signalExit(close)
   process.on('uncaughtException', close)
 
   // only listen to stdin if it is a pipe
