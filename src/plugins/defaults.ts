@@ -7,6 +7,8 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
+import path from 'path'
+
 // some builtin plugins
 import resolve from '@allex/rollup-plugin-node-resolve'
 import babel from 'rollup-plugin-babel'
@@ -34,6 +36,9 @@ export const defaultPluginOpts = {
       main: true,
       // prefer local modules for browser
       preferBuiltins: false,
+      customResolveOptions: {
+        paths: [ path.resolve(process.cwd(), 'node_modules') ]
+      },
       ...settings }
   },
 
