@@ -1,108 +1,114 @@
 # rollup-worker
 
-Rollup worker for multiple entry bundle with customize distributes.
+> Based on rollup with some built-in plugins, make configure more simple and integrations.  
+> Make `.fssrc.js` as the cli default config file.
+> 
+> Share some common plugins settings between multiple entries.
 
 ## Installation
 
 ```bash
-$
-
 npm i -g rollup-worker@next
-
-rollup-worker --config <CONFIG_FILE.js>
 ```
 
 ## Usage
 
-rollup config file
+```sh
+# default config: .fssrc.js
+rollup-worker [ -c .fssrc.js ]
+```
+
+## sample config
+
+cat .fssrc.js
 
 ```js
-// cat .fssrc.js
 import path from 'path'
-import coffee from 'rollup-plugin-coffee-script'
+
+import builtins from 'rollup-plugin-node-builtins'
+import globals from 'rollup-plugin-node-globals'
+import babel from 'rollup-plugin-babel'
+import typescript from 'rollup-plugin-typescript2'
 
 const { version, name, author, dependencies } = require('./package.json')
 
-// add some customize plugins with builtins
+cosnt banner = `/*! ${name} v${version} | ${license || 'MIT'} licensed. | by ${author} */`
+
+// Add some customize plugins with builtins
 const plugins = [
-  coffee(),
-  'resolve',
-  'commonjs'
+  [ 'builtins', builtins ],
+  [ 'resolve' ],
+  [ 'ts', typescript ],
+  [ 'commonjs' ],
+  [ 'babel', babel ],
+  [ 'globals', globals ]
 ]
 
-const babelConfig = { ... }
+const babelConfig = { 
+  babelrc: true
+}
 
 module.exports = {
-  rollup: {
-    destDir: path.join(__dirname, './'),
-    pluginOptions: {
-      babel: (rollupCfg) => {
-        const babelrc = Object.assign({}, babelConfig)
-        if ([ 'es', 'cjs' ].includes(rollupCfg.output.format)) {
-          babelrc.comments = true
+  destDir: path.join(__dirname, './'),
+  pluginOptions: {
+    babel (rollupCfg) {
+      const babelrc = Object.assign({}, babelConfig)
+      if ([ 'es', 'cjs' ].includes(rollupCfg.output.format)) {
+        babelrc.comments = true
+      }
+      return babelrc
+    },
+    resolve ({ output: { format } }) {
+      return {
+        preferBuiltins: false,
+        customResolveOptions: {
+          moduleDirectory: /min|umd|iife/.test(format) ? [ 'src', 'node_modules' ] : [ 'src' ]
         }
-        return babelrc
-      },
-      nodeResolve: (rollupCfg) => {
-        const format = rollupCfg.output.format
-        return {
-          preferBuiltins: false,
-          customResolveOptions: {
-            moduleDirectory: /min|umd|iife/.test(format) ? [ 'src', 'node_modules' ] : [ 'src' ]
-          }
-        }
-      },
-      uglifyjs: {
-        ie8: false
       }
     },
-    entry: [
-      {
-        input: './pace.coffee',
-        plugins,
-        output: [
-          {
-            format: 'es',
-            file: 'pace.esm.js'
-          },
-          {
-            format: 'umd',
-            name: 'Pace',
-            file: 'pace.js',
-            banner: `/*! ${name} v${version} | ${license || 'MIT'} Licensed. | By ${author} */\n`
+    ts (rollupCfg) {
+      return { 
+        typescript: require('@allex/typescript'), // custom tsc engine
+        tsconfigOverride: {
+          compilerOptions: {
+            newLine: "lf"
           }
-        ]
-      },
-      {
-        input: './docs/lib/themes.coffee',
-        plugins,
-        output: [
-          {
-            format: 'iife',
-            minimize: true,
-            file: 'docs/lib/themes.js'
-          }
-        ]
+        }
       }
-    ]
-  }
+    },
+    globals ({ output }) {
+      return output.format === 'es' ? {
+        process: false,
+        buffer: false
+      } : {}
+    },
+    uglifyjs: {
+      ie8: false
+    },
+    replace: {
+      __VERSION__: version
+    }
+  },
+  entry: [
+    {
+      input: './src/worker/index.ts',
+      plugins,
+      output: [
+        { format: 'es', file: 'worker.esm.js' },
+        { format: 'umd', file: 'worker.js', name: 'FooWorker', banner }
+      ]
+    },
+    {
+      input: './src/app/main.ts',
+      plugins,
+      output: [
+        { format: 'iife', minimize: true, file: 'app/main.js', banner }
+      ]
+    }
+  ]
 }
-```
-
-```js
-// cat build.js
-
-'use strict'
-
-const Rollup = require('rollup-worker')
-const config = require('./.fssrc.js')
-
-const worker = new Rollup(config.rollup)
-worker.build().then(err => console.error(err))
 ```
 
 ## License
 
-[MIT](http://opensource.org/licenses/MIT)
-
-[1]: https://lodash.com/docs/#mergeWith
+[MIT](https://allex.github.io/LICENSE.md)
