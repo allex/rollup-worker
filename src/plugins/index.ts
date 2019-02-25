@@ -1,18 +1,19 @@
 // Re-exports some builtin plugins
 
 import { defaultPluginOpts, pluginImpls } from './defaults'
+import Debug from 'debug'
 
-const debug = require('debug')('rollup-worker:plugins')
+const debug = Debug('rollup-worker:plugins')
 
 export { defaultPluginOpts }
 
 // api for get default plugins
-export const getPlugin = (name) => {
+export const getPlugin = name => {
   const fn = pluginImpls[name]
   if (typeof fn !== 'function') {
     throw new Error(`Get plugin by name failed, name="${name}"`)
   }
-  return (opt) => {
+  return opt => {
     const optFn = defaultPluginOpts[name]
     if (optFn) {
       // merge plugin default options

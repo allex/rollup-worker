@@ -11,24 +11,21 @@ import chalk from 'chalk'
 import fs from 'fs'
 import mkdirp from 'mkdirp'
 import path from 'path'
+import Debug from 'debug'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
 import rollup from 'rollup'
-import progressPlugin from 'rollup-plugin-progress'
 import uglify from 'terser'
 import loadConfigFile from './loadConfigFile'
 import { stderr } from './logging'
 import { defaultPluginOpts, getPlugin } from './plugins'
 import { deepAssign, isArray, isFunction, isString, mergeArray, relativeId, result, sequence } from './utils'
+import { version } from '../package.json'
 
-const pkg = require('../package.json')
-const debug = require('debug')('rollup-worker')
-const assign = Object.assign
-
-const version = pkg.version
+const debug = Debug('rollup-worker')
 
 // some builtin plugins
-const builtins = [ 'json', 'replace' ]
+const builtinPlugins = ['json', 'replace']
 
 interface OutputMinify {
   code: string;
@@ -36,37 +33,37 @@ interface OutputMinify {
   error?: Error
 }
 
-function read (path) { // eslint-disable-line no-unused-vars
-  return fs.readFileSync(path, 'utf8')
-}
-
-function write (file, code): Promise<any> {
+function write(file, code): Promise<any> {
   return new Promise((resolve, reject) => {
     mkdirp.sync(path.dirname(file))
-    fs.writeFile(file, code, (err) => err ? reject(err) : resolve())
+    fs.writeFile(file, code, err => err ? reject(err) : resolve())
   })
 }
 
 const uglifyjs = (code, options = {}) => {
+  // remove duplicates comments
   const commentsCache = {}
+
   // https://github.com/mishoo/UglifyJS2#minify-options
   return uglify.minify(code, deepAssign({
     ie8: true,
     output: {
-      comments (n, c) {
+      comments(n, c) {
         /*! IMPORTANT: Please preserve 3rd-party library license, Inspired from @allex/amd-build-worker/config/util.js */
-        const text = c.value, type = c.type
-        if (type === 'comment2') {
-          let preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text)
-          // remove duplicates comments
-          preserve = preserve && !commentsCache[text]
+        if (c.type === 'comment2') {
+          let text = c.value
+          let preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text) && !commentsCache[text]
           if (preserve) {
-            if (!~text.indexOf('\n')) {
-              c.nlb = false
-            }
             commentsCache[text] = 1
             // strip blanks
-            c.value = text.replace(/\n\s\s*/g, '\n ')
+            text = text.replace(/\n\s\s*/g, '\n ')
+            if (preserve = !commentsCache[text]) {
+              commentsCache[text] = 1
+              c.value = text
+              if (!~text.indexOf('\n')) {
+                c.nlb = false
+              }
+            }
           }
           return preserve
         }
@@ -86,7 +83,7 @@ const isRollupPluginCtor = o =>
   isFunction(o) && !(['resolveId', 'transform', 'load'].some(k => !!o[k]))
 
 const isNativeRollupCfg = o => {
-  if (!isArray(o)) o = [ o ]
+  if (!isArray(o)) o = [o]
   return o.some(o => !!(o.input && o.output))
 }
 
@@ -107,6 +104,7 @@ export interface PluginOption {
 }
 
 export interface BundleEntry {
+  code: string;
 }
 
 export interface WorkerOptions {
@@ -115,8 +113,8 @@ export interface WorkerOptions {
   entry: BundleEntry[];
 }
 
-export class Rollup {
-  private config: any;
+class RollupWorker {
+  private config: any
 
   /**
    * Multi-entry config for rollup bundle
@@ -124,7 +122,7 @@ export class Rollup {
    * @constructor
    * @param {Object} config The config for multiple bundle
    */
-  constructor (options: WorkerOptions) {
+  constructor(options: WorkerOptions) {
     if (!options) {
       throw new Error('Illegal constructor arguments.')
     }
@@ -132,7 +130,7 @@ export class Rollup {
     // Adapter options is a native rollup configs
     if (isNativeRollupCfg(options)) {
       options = {
-        entry: isArray(options) ? options : [ options ]
+        entry: isArray(options) ? options : [options]
       }
     }
 
@@ -141,14 +139,15 @@ export class Rollup {
       throw new Error('entry not valid')
     }
 
-    options.entry = isArray(entry) ? entry : [ entry ]
+    options.entry = isArray(entry) ? entry : [entry]
 
-    this.config = assign({
-      plugins: {} // settings for default plugins
-    }, options)
+    this.config = {
+      plugins: {}, // settings for default plugins
+      ...options
+    }
   }
 
-  getPluginCfg (name: string, ...args: any[]) {
+  getPluginCfg(name: string, ...args: any[]) {
     const cfg = this.config
     let opt = (cfg.pluginOptions || cfg.plugins || 0)[name]
 
@@ -166,7 +165,7 @@ export class Rollup {
     return opt
   }
 
-  _checkExternal (id, entry) {
+  _checkExternal(id, entry) {
     const dependencies = entry.dependencies || this.config.dependencies || []
     if (!isArray(dependencies)) {
       return !!dependencies[id]
@@ -174,16 +173,16 @@ export class Rollup {
     return dependencies.length ? ~dependencies.indexOf(id) : false
   }
 
-  _normalizePlugins (plugins, rollupCfg) {
+  _normalizePlugins(plugins, rollupCfg) {
     if (!plugins) {
       // default plugins
-      plugins = [ 'babel', 'resolve', 'commonjs' ]
+      plugins = ['babel', 'resolve', 'commonjs']
     } else {
       plugins = plugins.filter(p => !!p)
     }
 
     // combin builtin plugins
-    plugins = mergeArray(builtins, plugins, { pk: 'name' })
+    plugins = mergeArray(builtinPlugins, plugins, { pk: 'name' })
 
     const output = rollupCfg.output
 
@@ -235,14 +234,14 @@ export class Rollup {
    * }
    * ```
    */
-  _normalizeEntry (entry) {
-    entry = assign({}, entry)
+  _normalizeEntry(entry) {
+    entry = { ...entry }
 
-    const self = this
-    const destDir = self.config.destDir || '.'
+    const destDir = this.config.destDir || '.'
 
     let { targets, output, globals } = entry
-    ;[ 'targets', 'output', 'globals' ].forEach(k => delete entry[k])
+
+    ; ['targets', 'output', 'globals'].forEach(k => delete entry[k])
 
     let list = output || targets
     globals = globals || {}
@@ -252,7 +251,7 @@ export class Rollup {
     }
 
     if (!isArray(list)) {
-      list = [ list ]
+      list = [list]
     }
 
     return list.map(o => {
@@ -262,8 +261,8 @@ export class Rollup {
       }
 
       // merge with some defaults
-      const output = assign({ globals, indent: '  ' }, o)
-      let input = assign({}, entry)
+      const output = { globals, indent: '  ', ...o }
+      let input = { ...entry }
 
       // resolve output file with base dir
       if (output.file) {
@@ -278,7 +277,7 @@ export class Rollup {
 
       // external(importee, importer);
       const defaultExternalFn = (id, checkDependency) => {
-        const isDependency = self._checkExternal(id, input)
+        const isDependency = this._checkExternal(id, input)
 
         checkDependency = typeof checkDependency === 'boolean'
           ? checkDependency : false
@@ -296,15 +295,15 @@ export class Rollup {
       const external = !_external
         ? defaultExternalFn
         : (isFunction(_external)
-          ? (id) => _external(id, format, defaultExternalFn) : _external)
+          ? id => _external(id, format, defaultExternalFn) : _external)
 
-      input = assign({ plugins, external }, input)
+      input = { plugins, external, ...input }
 
       return { i: input, o: output }
     })
   }
 
-  mapBundles (entry) {
+  mapBundles(entry) {
     const list = this._normalizeEntry(entry)
 
     debug('normalized rollup entries => \n%O', list)
@@ -312,7 +311,7 @@ export class Rollup {
     const files = list.map(({ o }) => relativeId(o.file || o.dir))
     let start = Date.now()
 
-    stderr(chalk.cyan('build ' + chalk.bold(relativeId(entry.input)) + ' \u2192 ' + chalk.bold(files.join(', ')) + ' ...'))
+    stderr(chalk.cyan(`build ${chalk.bold(relativeId(entry.input))} \u2192 ${chalk.bold(files.join(', '))} ...`))
 
     return sequence(list, async ({ i, o }): Promise<RollupBuild> => {
 
@@ -345,22 +344,22 @@ export class Rollup {
         const ex = minified.error
         if (ex) {
           if (ex.name === 'SyntaxError') {
-            printError('Parse error at ' + ex.filename + ':' + ex.line + ',' + ex.col);
-            const col = ex.col;
-            const lines = code.split(/\r?\n/);
-            let line = lines[ex.line - 1];
+            printError(`Parse error at ${ex.filename}:${ex.line},${ex.col}`)
+            const lines = code.split(/\r?\n/)
+            let col = ex.col
+            let line = lines[ex.line - 1]
             if (!line && !col) {
-              line = lines[ex.line - 2];
-              col = line.length;
+              line = lines[ex.line - 2]
+              col = line.length
             }
             if (line) {
-              const limit = 70;
+              const limit = 70
               if (col > limit) {
-                line = line.slice(col - limit);
-                col = limit;
+                line = line.slice(col - limit)
+                col = limit
               }
-              printError(line.slice(0, 80));
-              printError(line.slice(0, col).replace(/\S/g, ' ') + '^');
+              printError(line.slice(0, 80))
+              printError(line.slice(0, col).replace(/\S/g, ' ') + '^')
             }
           }
           throw ex
@@ -390,19 +389,17 @@ export class Rollup {
     })
   }
 
-  build () {
+  build() {
     return sequence(this.config.entry, o => this.mapBundles(o))
   }
 
-  watch (options) {
+  watch(options) {
     const watchOptions = []
-    const watch = assign({
-      chokidar: true
-    }, options)
+    const watch = { chokidar: true, ...options }
     this.config.entry.forEach(entry => {
       const list = this._normalizeEntry(entry)
       list.forEach(({ i, o }) => {
-        watchOptions.push({ ...i, output: o, watch })
+        watchOptions.push({ watch, ...i, output: o })
       })
     })
     return rollup.watch(watchOptions)
@@ -411,6 +408,7 @@ export class Rollup {
 
 export {
   version,
+  RollupWorker,
   getPlugin,
   loadConfigFile
 }

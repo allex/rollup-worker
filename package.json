@@ -15,11 +15,11 @@
     "rollup-worker": "./bin/cli.js"
   },
   "scripts": {
-    "lint": "npm run lint:ts -- --fix && npm run lint:js -- --fix",
+    "lint": "npm run lint:ts && npm run lint:js",
     "lint:ts": "tslint --project .",
     "lint:js": "standard \"test/*.js\"",
-    "lint:fix": "standard \"src/*.js\" --fix",
-    "build": "rollup -c && shx chmod a+x bin/cli.js",
+    "lint:fix": "tslint --project . --fix && standard \"src/*.js\" --fix",
+    "build": "npm run -s lint && rollup -c && shx chmod a+x bin/cli.js",
     "watch": "rollup -c -w",
     "test": "npm run lint",
     "prepare": "npm test && npm run build"
@@ -34,6 +34,7 @@
     "rollup": "~1.1.2",
     "rollup-plugin-babel": "^3",
     "rollup-plugin-commonjs": "^9",
+    "rollup-plugin-eslint": "^5",
     "rollup-plugin-json5": "^1",
     "rollup-plugin-progress": "^1.0.0",
     "rollup-plugin-replace": "^2",
@@ -54,7 +55,8 @@
     "shx": "^0.2.2",
     "signal-exit": "^3.0.2",
     "tslib": "^1.9.3",
-    "tslint": "^5.12.1"
+    "tslint": "^5.12.1",
+    "tslint-config-airbnb": "^5.11.1"
   },
   "files": [
     "lib",

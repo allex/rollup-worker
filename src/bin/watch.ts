@@ -7,32 +7,29 @@ import { handleError, stderr } from '../logging'
 import { relativeId } from '../utils'
 import alternateScreen from './alternateScreen'
 import { printTimings } from './timings'
+import { RollupWorker, version } from 'rollup-worker'
 
-import { Rollup, version }  from 'rollup-worker'
-
-const debug = require('debug')('rollup-worker:watch')
-
-function watch (configFile, configs, command, silent = false) {
+function watch(configFile, configs, command, silent = false) {
   const isTTY = Boolean(process.stderr.isTTY)
 
-  const processConfigs = (configs) => {
+  const processConfigs = configs => {
     return configs
   }
 
   const warnings = batchWarnings()
   const initialConfigs = processConfigs(configs)
-  const clearScreen = [ initialConfigs ].every(function (config) { return (config.watch || 0).clearScreen !== false })
+  const clearScreen = [initialConfigs].every(config => (config.watch || 0).clearScreen !== false)
 
   const screen = alternateScreen(isTTY && clearScreen)
   screen.open()
 
   let watcher
 
-  function start (configs) {
+  function start(configs) {
     screen.reset(chalk.underline('rollup-worker v' + version))
     const screenWriter = configs.processConfigsErr || screen.reset
-    watcher = new Rollup(configs).watch()
-    watcher.on('event', function (event) {
+    watcher = new RollupWorker(configs).watch()
+    watcher.on('event', event => {
       switch (event.code) {
         case 'FATAL':
           screen.close()
@@ -48,33 +45,33 @@ function watch (configFile, configs, command, silent = false) {
           break
         case 'BUNDLE_START':
           if (!silent) {
-            var input = event.input
+            let input = event.input
             if (typeof input !== 'string') {
               input = Array.isArray(input)
                 ? input.join(', ')
                 : Object.keys(input)
-                  .map(function (key) { return input[key] })
+                  .map(key => input[key])
                   .join(', ')
             }
-            stderr(chalk.cyan('bundles ' + chalk.bold(relativeId(input)) + ' \u2192 ' + chalk.bold(event.output.map(relativeId).join(', ')) + '...'))
+            stderr(chalk.cyan(`bundles ${chalk.bold(relativeId(input))} \u2192 ${chalk.bold(event.output.map(relativeId).join(', '))}...`))
           }
           break
         case 'BUNDLE_END':
           warnings.flush()
-          if (!silent) { stderr(chalk.green('created ' + chalk.bold(event.output.map(relativeId).join(', ')) + ' in ' + chalk.bold(prettyMs(event.duration)))) }
+          if (!silent) { stderr(chalk.green(`created ${chalk.bold(event.output.map(relativeId).join(', '))} in ${chalk.bold(prettyMs(event.duration))}`)) }
           if (event.result && event.result.getTimings) {
             printTimings(event.result.getTimings())
           }
           break
         case 'END':
           if (!silent && isTTY) {
-            stderr('\n[' + dateTime() + '] waiting for changes...')
+            stderr(`\n[${dateTime()}] waiting for changes...`)
           }
       }
     })
   }
 
-  function close (err) {
+  function close(err) {
     removeOnExit()
     process.removeListener('uncaughtException', close)
     // removing a non-existent listener is a no-op

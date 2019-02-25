@@ -1,7 +1,7 @@
 import fs from 'fs'
 import p from 'path'
 
-import { loadConfigFile, Rollup, version } from 'rollup-worker'
+import { RollupWorker, loadConfigFile, version } from 'rollup-worker'
 import { stderr } from '../logging'
 import { relativeId } from '../utils'
 import watch from './watch'
@@ -47,10 +47,10 @@ Usage: rollup-bundle [-w] [--config | -c] <config_file.js>
   process.exit(1)
 }
 
-const build = configs => new Rollup(configs).build()
+const build = configs => new RollupWorker(configs).build()
 
 loadConfigFile(configFile)
-  .then((configs) => {
+  .then(configs => {
     configs = configs.map(o => o.rollup || o)
     if (configs.some(o => o.entry)) {
       configs = configs[0]
@@ -62,12 +62,12 @@ loadConfigFile(configFile)
       return build(configs)
     }
   })
-  .catch((e) => fatal(e))
+  .catch(e => fatal(e))
 
 function fatal(message) {
-  if (message instanceof Error) message = message.stack.replace(/^\S*?Error:/, "ERROR:")
-  stderr(message);
-  process.exit(1);
+  if (message instanceof Error) message = message.stack.replace(/^\S*?Error:/, 'ERROR:')
+  stderr(message)
+  process.exit(1)
 }
 
 export { build, watch }

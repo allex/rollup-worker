@@ -1,9 +1,13 @@
 {
   "compilerOptions": {
+    "target": "esnext",
     "allowSyntheticDefaultImports": true,
     "diagnostics": true,
     "downlevelIteration": false,
     "lib": ["es5", "es6", "dom"],
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "noEmitOnError": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
@@ -11,7 +15,6 @@
     "noUnusedParameters": true,
     "pretty": true,
     "skipLibCheck": true,
-    "target": "esnext",
     "newLine": "lf"
   },
   "include": [
