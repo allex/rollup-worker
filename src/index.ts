@@ -9,6 +9,7 @@
 
 import chalk from 'chalk'
 import fs from 'fs'
+import os from 'os'
 import mkdirp from 'mkdirp'
 import path from 'path'
 import Debug from 'debug'
@@ -21,6 +22,7 @@ import { stderr } from './logging'
 import { defaultPluginOpts, getPlugin } from './plugins'
 import { deepAssign, isArray, isFunction, isString, mergeArray, relativeId, result, sequence } from './utils'
 import { version } from '../package.json'
+import { md5 } from '@allex/md5'
 
 const debug = Debug('rollup-worker')
 
@@ -379,6 +381,9 @@ class RollupWorker {
           banner = banner.replace(/\r\n?|[\n\u2028\u2029]|\s*$/g, '\n')
           code = banner + code
         }
+
+        const footer = (o.footer || `/* [hash] */`).replace(/\[hash\]/g, md5(code))
+        code = code + os.EOL + footer
 
         // write minify
         await write(file, code, start)

@@ -27,6 +27,7 @@
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",
   "dependencies": {
+    "@allex/md5": "^1.0.4",
     "@allex/rollup-plugin-node-resolve": "next",
     "babel-core": "6",
     "chalk": "^2.4.1",
