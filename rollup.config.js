@@ -25,7 +25,7 @@ export default [ {
     eslint(),
     progress()
   ],
-  external: Object.keys(dependencies).concat([ 'fs', 'path', 'events', 'module', 'util', 'rollup-worker' ]),
+  external: Object.keys(dependencies).concat([ 'fs', 'path', 'events', 'module', 'util', 'rollup-worker', 'os' ]),
   output: [
     { file: 'lib/rollup-worker.js', format: 'cjs' },
     { file: 'lib/rollup-worker.es.js', format: 'es' }

@@ -79,6 +79,7 @@ const _deepAssign = genTraversalHandler(val => val)
 
 /**
  * deeply clone an object
+ *
  * @param  {Array|Object} source if you pass in other type, it will throw an error
  * @return {clone-target}        the new Object
  */
@@ -91,6 +92,7 @@ export function deepClone(source) {
 
 /**
  * merge multiple objects
+ *
  * @param  {...Object} args [description]
  * @return {merge-object}         [description]
  */

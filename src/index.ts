@@ -42,34 +42,44 @@ function write(file, code): Promise<any> {
   })
 }
 
-const uglifyjs = (code, options = {}) => {
+// multiline comment
+const COMMENT_MULTILINE = 'comment2'
+
+const isSomeComments = comment => comment.type === COMMENT_MULTILINE && /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(comment.value)
+
+const createCommentsFilter = () => {
   // remove duplicates comments
-  const commentsCache = {}
+  const cache = {}
+  return function (n, c) {
+    /*! IMPORTANT: Please preserve 3rd-party library license, Inspired from @allex/amd-build-worker/config/util.js */
+    if (isSomeComments(c)) {
+      let text = c.value
+      let preserve = !cache[text]
+      if (preserve) {
+        cache[text] = 1
+        // strip blanks
+        text = text.replace(/\n\s\s*/g, '\n ')
+        if (preserve = !cache[text]) {
+          cache[text] = 1
+          c.value = text
+          if (!~text.indexOf('\n')) {
+            c.nlb = false
+          }
+        }
+      }
+      return preserve
+    }
+  }
+}
+
+const uglifyjs = (code, options = {}) => {
+  const comments = (options.output || 0).comments
 
   // https://github.com/mishoo/UglifyJS2#minify-options
   return uglify.minify(code, deepAssign({
     ie8: true,
     output: {
-      comments(n, c) {
-        /*! IMPORTANT: Please preserve 3rd-party library license, Inspired from @allex/amd-build-worker/config/util.js */
-        if (c.type === 'comment2') {
-          let text = c.value
-          let preserve = /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(text) && !commentsCache[text]
-          if (preserve) {
-            commentsCache[text] = 1
-            // strip blanks
-            text = text.replace(/\n\s\s*/g, '\n ')
-            if (preserve = !commentsCache[text]) {
-              commentsCache[text] = 1
-              c.value = text
-              if (!~text.indexOf('\n')) {
-                c.nlb = false
-              }
-            }
-          }
-          return preserve
-        }
-      }
+      comments: (comments && comments !== 'some') ? comments : createCommentsFilter()
     },
     compress: {
       drop_console: true,
