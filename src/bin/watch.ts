@@ -3,14 +3,14 @@ import dateTime from 'date-time'
 import prettyMs from 'pretty-ms'
 import signalExit from 'signal-exit'
 
+import { RollupWorker, version } from 'rollup-worker'
 import batchWarnings from '../batchWarnings'
 import { handleError, stderr } from '../logging'
 import { relativeId } from '../utils'
 import alternateScreen from './alternateScreen'
 import { printTimings } from './timings'
-import { RollupWorker, version } from 'rollup-worker'
 
-function watch(configFile, configs, command, silent = false) {
+function watch (configFile, configs, command, silent = false) {
   const isTTY = Boolean(process.stderr.isTTY)
 
   const processConfigs = configs => {
@@ -26,7 +26,7 @@ function watch(configFile, configs, command, silent = false) {
 
   let watcher
 
-  function start(configs) {
+  function start (configs) {
     screen.reset(chalk.underline('rollup-worker v' + version))
     const screenWriter = configs.processConfigsErr || screen.reset
     watcher = new RollupWorker(configs).watch()
@@ -72,7 +72,7 @@ function watch(configFile, configs, command, silent = false) {
     })
   }
 
-  function close(err) {
+  function close (err) {
     removeOnExit()
     process.removeListener('uncaughtException', close)
     // removing a non-existent listener is a no-op

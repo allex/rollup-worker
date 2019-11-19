@@ -1,7 +1,7 @@
 import tc from 'chalk'
 import prettyBytes from 'pretty-bytes'
 
-export function printTimings(timings) {
+export function printTimings (timings) {
   Object.keys(timings).forEach(label => {
     const color =
       label[0] === '#' ? (label[1] !== '#' ? tc.underline : tc.bold) : text => text

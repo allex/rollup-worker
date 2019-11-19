@@ -8,11 +8,11 @@
  */
 
 import chalk from 'chalk'
-import fs from 'fs'
-import os from 'os'
-import mkdirp from 'mkdirp'
-import path from 'path'
 import Debug from 'debug'
+import fs from 'fs'
+import mkdirp from 'mkdirp'
+import os from 'os'
+import path from 'path'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
 import rollup from 'rollup'
@@ -20,12 +20,12 @@ import uglify from 'terser'
 
 import { deepAssign, isArray, isFunction, isString, sequence } from '@fdio/utils'
 
-import { mergeArray, relativeId, result } from './utils'
+import { md5 } from '@allex/md5'
+import { version } from '../package.json'
 import loadConfigFile from './loadConfigFile'
 import { stderr } from './logging'
 import { defaultPluginOpts, getPlugin } from './plugins'
-import { version } from '../package.json'
-import { md5 } from '@allex/md5'
+import { mergeArray, relativeId, result } from './utils'
 
 const debug = Debug('rollup-worker')
 
@@ -38,7 +38,7 @@ interface MinifyOutput {
   error?: Error
 }
 
-function write(file, code): Promise<any> {
+function write (file, code): Promise<any> {
   return new Promise((resolve, reject) => {
     mkdirp.sync(path.dirname(file))
     fs.writeFile(file, code, err => err ? reject(err) : resolve())
@@ -138,7 +138,7 @@ class RollupWorker {
    * @constructor
    * @param {Object} config The config for multiple bundle
    */
-  constructor(options: WorkerOptions) {
+  constructor (options: WorkerOptions) {
     if (!options) {
       throw new Error('Illegal constructor arguments.')
     }
@@ -152,7 +152,7 @@ class RollupWorker {
 
     const entry = options.entry
     if (!entry) {
-      throw new Error('entry not valid')
+      throw new Error('`entry` not valid')
     }
 
     options.entry = isArray(entry) ? entry : [entry]
@@ -163,7 +163,7 @@ class RollupWorker {
     }
   }
 
-  getPluginCfg(name: string, ...args: any[]) {
+  getPluginCfg (name: string, ...args: any[]) {
     const cfg = this.config
     let opt = (cfg.pluginOptions || cfg.plugins || 0)[name]
 
@@ -181,7 +181,7 @@ class RollupWorker {
     return opt
   }
 
-  _checkExternal(id, entry) {
+  _checkExternal (id, entry) {
     const dependencies = entry.dependencies || this.config.dependencies || []
     if (!isArray(dependencies)) {
       return !!dependencies[id]
@@ -189,7 +189,7 @@ class RollupWorker {
     return dependencies.length ? ~dependencies.indexOf(id) : false
   }
 
-  _normalizePlugins(plugins, rollupCfg) {
+  _normalizePlugins (plugins, rollupCfg) {
     if (!plugins) {
       // default plugins
       plugins = ['babel', 'resolve', 'commonjs']
@@ -250,21 +250,23 @@ class RollupWorker {
    * }
    * ```
    */
-  _normalizeEntry(entry) {
+  _normalizeEntry (entry) {
     entry = { ...entry }
 
     const destDir = this.config.destDir || '.'
 
     let { targets, output, globals } = entry
-
-    ; ['targets', 'output', 'globals'].forEach(k => delete entry[k])
-
     let list = output || targets
-    globals = globals || {}
 
     if (!list) {
-      throw new Error('You must specify `option.output`.')
+      throw new Error('`output` mandatory required')
     }
+
+    globals = globals || {}
+
+    delete entry.targets
+    delete entry.output
+    delete entry.globals
 
     if (!isArray(list)) {
       list = [list]
@@ -319,7 +321,7 @@ class RollupWorker {
     })
   }
 
-  mapBundles(entry) {
+  mapBundles (entry) {
     const list = this._normalizeEntry(entry)
 
     debug('normalized rollup entries => \n%O', list)
@@ -408,11 +410,11 @@ class RollupWorker {
     })
   }
 
-  build() {
+  build () {
     return sequence(this.config.entry, o => this.mapBundles(o))
   }
 
-  watch(options) {
+  watch (options) {
     const watchOptions = []
     const watch = { chokidar: true, ...options }
     this.config.entry.forEach(entry => {

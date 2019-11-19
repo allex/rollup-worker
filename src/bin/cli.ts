@@ -1,7 +1,7 @@
 import fs from 'fs'
 import p from 'path'
 
-import { RollupWorker, loadConfigFile, version } from 'rollup-worker'
+import { loadConfigFile, RollupWorker, version } from 'rollup-worker'
 import { stderr } from '../logging'
 import { relativeId } from '../utils'
 import watch from './watch'
@@ -64,7 +64,7 @@ loadConfigFile(configFile)
   })
   .catch(e => fatal(e))
 
-function fatal(message) {
+function fatal (message) {
   if (message instanceof Error) message = message.stack.replace(/^\S*?Error:/, 'ERROR:')
   stderr(message)
   process.exit(1)

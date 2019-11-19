@@ -8,50 +8,57 @@
     "indent": [true, "spaces"],
     "no-const-assign": true
   },
-  "extends" : [
-    "tslint:recommended",
-    "tslint-config-airbnb"
+  "extends": [
+    "tslint:recommended"
   ],
+  "linterOptions": {
+    "exclude": [
+      "node_modules/**"
+    ]
+  },
   "rules": {
-    "align": false,
-    "forin": false,
-    "interface-name": [true],
-    "no-console": [false],
-    "indent": [true, "spaces"],
-    "variable-name":
-    [
-      true,
-      "ban-keywords",
-      "check-format",
-      "allow-pascal-case",
-      "allow-leading-underscore"
-    ],
-    "one-line": [false],
-    "max-line-length": [false],
+    "arrow-parens": false,
+    "member-access": [ true, "no-public" ],
+    "forin": true,
+    "prefer-for-of": false,
+    "prefer-const": [ true, { "destructuring": "all" } ],
+    "no-console": false,
+    "quotemark": [ true, "single", "avoid-escape", "jsx-double" ],
+    "indent": [ true, "spaces", 2 ],
+    "interface-name": false,
+    "variable-name": [ true, "ban-keywords", "check-format", "allow-pascal-case", "allow-leading-underscore" ],
+    "one-line": false,
+    "max-line-length": false,
     "object-literal-sort-keys": false,
     "curly": false,
-    "ordered-imports": [ false ],
-    "only-arrow-functions": [ false ],
+    "ordered-imports": true,
+    "only-arrow-functions": false,
     "class-name": true,
-    "interface-name": false,
-    "import-name": false,
     "max-classes-per-file": false,
-    "quotemark": [true, "single", "avoid-escape", "jsx-double"],
     "trailing-comma": false,
-    "ter-arrow-parens": [true, "as-needed"],
     "no-reference": false,
-    "no-empty": [true, "allow-empty-catch", "allow-empty-functions"],
+    "no-consecutive-blank-lines": false,
+    "no-empty": [ true, "allow-empty-catch", "allow-empty-functions" ],
+    "no-empty-interface": false,
     "no-conditional-assignment": false,
-    "no-shadowed-variable": false,
-    "new-parens": false,
+    "no-namespace": [ false ],
     "no-bitwise": false,
-    "no-parameter-reassignment": false,
     "one-variable-per-declaration": false,
-    "prefer-const": [true, {"destructuring": "all"}],
-    "prefer-template": [true, "allow-single-concat"],
-    "member-access": [true, "no-public"],
+    "triple-equals": [ true, "allow-null-check" ],
+    "no-shadowed-variable": false,
+    "no-angle-bracket-type-assertion": false,
     "semicolon": [true, "never", "ignore-interfaces", "ignore-bound-class-methods"],
-    "triple-equals": [true, "allow-null-check"],
-    "function-name": false
+    "space-before-function-paren": {
+      "options": {
+        "anonymous": "always",
+        "asyncArrow": "always",
+        "constructor": "always",
+        "method": "always",
+        "named": "always"
+      }
+    },
+    "space-within-parens": true,
+    "object-literal-key-quotes": [true, "as-needed"],
+    "no-unused-expressions": ["error", { "allowShortCircuit": true, "allowTernary": true }]
   }
 }

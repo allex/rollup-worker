@@ -1,7 +1,7 @@
 // Re-exports some builtin plugins
 
-import { defaultPluginOpts, pluginImpls } from './defaults'
 import Debug from 'debug'
+import { defaultPluginOpts, pluginImpls } from './defaults'
 
 const debug = Debug('rollup-worker:plugins')
 

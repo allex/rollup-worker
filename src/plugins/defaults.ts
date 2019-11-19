@@ -27,7 +27,7 @@ export const pluginImpls = {
 }
 
 export const defaultPluginOpts = {
-  resolve(settings) {
+  resolve (settings) {
     // For more resolve options see <https://www.npmjs.com/package/resolve>
     // pay attention to [module/jsnext/browser/main] orders
     return { jsnext: true,
@@ -42,23 +42,23 @@ export const defaultPluginOpts = {
       ...settings }
   },
 
-  json(settings) {
+  json (settings) {
     return { indent: '  ',
       ...settings }
   },
 
-  babel(settings) {
+  babel (settings) {
     return {
       ...settings }
   },
 
-  commonjs(settings) {
+  commonjs (settings) {
     return {
       extensions: ['.js', '.ts', '.coffee'],
       ...settings }
   },
 
-  typescript(settings) {
+  typescript (settings) {
     return deepAssign({
       check: true,
       abortOnError: false,
@@ -70,7 +70,7 @@ export const defaultPluginOpts = {
     }, settings)
   },
 
-  replace(settings) {
+  replace (settings) {
     return {
       NODE_ENV: process.env.NODE_ENV || 'production',
       ...settings

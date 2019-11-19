@@ -10,7 +10,7 @@ import { getPlugin } from './plugins'
 
 const json = getPlugin('json')
 
-export default function loadConfigFile(
+export default function loadConfigFile (
   configFile: string,
   commandOptions: any = {}
 ): Promise<InputOptions[]> {

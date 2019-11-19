@@ -2,14 +2,14 @@ import chalk from 'chalk'
 import { stderr } from './logging'
 import { relativeId } from './utils'
 
-export default function batchWarnings() {
+export default function batchWarnings () {
   let allWarnings = new Map()
   let count = 0
   return {
-    get count() {
+    get count () {
       return count
     },
-    add(warning) {
+    add (warning) {
       if (typeof warning === 'string') {
         warning = { code: 'UNKNOWN', message: warning }
       }
@@ -17,7 +17,7 @@ export default function batchWarnings() {
       allWarnings.get(warning.code).push(warning)
       count += 1
     },
-    flush() {
+    flush () {
       if (count === 0) { return }
       const codes = Array.from(allWarnings.keys()).sort((a, b) => allWarnings.get(b).length - allWarnings.get(a).length)
       codes.forEach(code => {
@@ -42,9 +42,9 @@ export default function batchWarnings() {
 }
 
 // eslint-disable-next-line
-function title(str) {
+function title (str) {
   stderr(`${chalk.bold.yellow('(!)')} ${chalk.bold.yellow(str)}`)
 }
-function info(url) {
+function info (url) {
   stderr(chalk.grey(url))
 }

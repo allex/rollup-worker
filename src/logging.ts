@@ -6,12 +6,12 @@ if (!chalk.supportsColor) chalk.enabled = false
 // log to stderr to keep `rollup main.js > bundle.js` from breaking
 export const stderr = console.error.bind(console) // eslint-disable-line no-console
 
-export function stderrln(msg: string) {
+export function stderrln (msg: string) {
   process.stderr.write(msg)
   process.stderr.write('\n')
 }
 
-export function handleError(err, recover) {
+export function handleError (err, recover) {
   if (recover === void 0) { recover = false }
   let description = err.message || err
   if (err.name) { description = `${err.name}: ${description}` }
