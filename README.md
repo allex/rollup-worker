@@ -7,53 +7,40 @@
 
 ## Installation
 
-```bash
-npm i -g rollup-worker@next
+```sh
+$ npm i -g rollup-worker@next
 ```
 
 ## Usage
 
 ```sh
 # default config: .fssrc.js
-rollup-worker [ -c .fssrc.js ]
+$ rb [ -c .fssrc.js ]
 ```
 
-## sample config
+## Example
 
 cat .fssrc.js
 
 ```js
-import path from 'path'
-
-import builtins from 'rollup-plugin-node-builtins'
-import globals from 'rollup-plugin-node-globals'
-import babel from 'rollup-plugin-babel'
-import typescript from 'rollup-plugin-typescript2'
-
 const { version, name, author, dependencies } = require('./package.json')
+const banner = `/*! ${name} v${version} | ${license || 'MIT'} licensed. | by ${author} */`
 
-cosnt banner = `/*! ${name} v${version} | ${license || 'MIT'} licensed. | by ${author} */`
-
-// Add some customize plugins with builtins
+// Optional enable some builtin plugins
 const plugins = [
-  [ 'builtins', builtins ],
-  [ 'resolve' ],
-  [ 'ts', typescript ],
-  [ 'commonjs' ],
-  [ 'babel', babel ],
-  [ 'globals', globals ]
+  'node-builtins',
+  'resolve',
+  'typescript',
+  'commonjs',
+  'babel',
+  'globals'
 ]
 
-const babelConfig = { 
-  babelrc: true
-}
-
 module.exports = {
-  destDir: path.join(__dirname, './'),
-  pluginOptions: {
-    babel (rollupCfg) {
-      const babelrc = Object.assign({}, babelConfig)
-      if ([ 'es', 'cjs' ].includes(rollupCfg.output.format)) {
+  plugins: {
+    babel ({ output: { format } }) {
+      const babelrc = {}
+      if ([ 'es', 'cjs' ].includes(format)) {
         babelrc.comments = true
       }
       return babelrc
@@ -66,7 +53,7 @@ module.exports = {
         }
       }
     },
-    ts (rollupCfg) {
+    typescript (rollupCfg) {
       return { 
         typescript: require('@allex/typescript'), // custom tsc engine
         tsconfigOverride: {
@@ -82,7 +69,7 @@ module.exports = {
         buffer: false
       } : {}
     },
-    uglifyjs: {
+    minify: { // for terser
       ie8: false
     },
     replace: {

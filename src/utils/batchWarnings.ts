@@ -1,6 +1,7 @@
 import chalk from 'chalk'
+
+import { relativeId } from './'
 import { stderr } from './logging'
-import { relativeId } from './utils'
 
 export default function batchWarnings () {
   let allWarnings = new Map()

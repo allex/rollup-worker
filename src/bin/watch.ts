@@ -3,10 +3,12 @@ import dateTime from 'date-time'
 import prettyMs from 'pretty-ms'
 import signalExit from 'signal-exit'
 
-import { RollupWorker, version } from 'rollup-worker'
-import batchWarnings from '../batchWarnings'
-import { handleError, stderr } from '../logging'
+import { Bundler, version } from 'rollup-worker'
+
 import { relativeId } from '../utils'
+import batchWarnings from '../utils/batchWarnings'
+import { handleError, stderr } from '../utils/logging'
+
 import alternateScreen from './alternateScreen'
 import { printTimings } from './timings'
 
@@ -29,7 +31,7 @@ function watch (configFile, configs, command, silent = false) {
   function start (configs) {
     screen.reset(chalk.underline('rollup-worker v' + version))
     const screenWriter = configs.processConfigsErr || screen.reset
-    watcher = new RollupWorker(configs).watch()
+    watcher = new Bundler(configs).watch()
     watcher.on('event', event => {
       switch (event.code) {
         case 'FATAL':

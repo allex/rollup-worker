@@ -2,15 +2,15 @@ import tc from 'chalk'
 import path from 'path'
 import rollup from 'rollup'
 
-import batchWarnings from './batchWarnings'
-import { handleError, stderr } from './logging'
 import { relativeId } from './utils'
+import batchWarnings from './utils/batchWarnings'
+import { handleError, stderr } from './utils/logging'
 
-import { getPlugin } from './plugins'
+import { getPluginCtor } from './plugins'
 
-const json = getPlugin('json')
+const json = getPluginCtor('json')
 
-export default function loadConfigFile (
+export function loadConfigFile (
   configFile: string,
   commandOptions: any = {}
 ): Promise<InputOptions[]> {

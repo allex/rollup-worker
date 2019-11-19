@@ -10,24 +10,27 @@
 import chalk from 'chalk'
 import Debug from 'debug'
 import fs from 'fs'
-import mkdirp from 'mkdirp'
-import os from 'os'
 import path from 'path'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
 import rollup from 'rollup'
-import uglify from 'terser'
 
-import { deepAssign, isArray, isFunction, isString, sequence } from '@fdio/utils'
+import {
+  defaultTo, find, get, isArray, isEmpty, isFunction, isString, merge, omit, sequence
+} from '@fdio/utils'
 
-import { md5 } from '@allex/md5'
-import { version } from '../package.json'
-import loadConfigFile from './loadConfigFile'
-import { stderr } from './logging'
-import { defaultPluginOpts, getPlugin } from './plugins'
-import { mergeArray, relativeId, result } from './utils'
+import { mergeArray, relativeId } from './utils'
+import { stderr } from './utils/logging'
+
+import { createPlugin } from './plugins'
+
+export { version } from '../package.json'
+export { loadConfigFile } from './loadConfigFile'
 
 const debug = Debug('rollup-worker')
+
+// default plugins (for zero config)
+const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
 
 // some builtin plugins
 const builtinPlugins = ['json', 'replace']
@@ -38,99 +41,35 @@ interface MinifyOutput {
   error?: Error
 }
 
-function write (file, code): Promise<any> {
-  return new Promise((resolve, reject) => {
-    mkdirp.sync(path.dirname(file))
-    fs.writeFile(file, code, err => err ? reject(err) : resolve())
-  })
-}
-
-// multiline comment
-const COMMENT_MULTILINE = 'comment2'
-
-// By default, comments with patterns of @license, @preserve or starting with /*! are preserved
-const isSomeComments = comment => comment.type === COMMENT_MULTILINE && /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(comment.value)
-
-const createCommentsFilter = () => {
-  // remove duplicates comments
-  const cache = {}
-  return function (n, c) {
-    /*! IMPORTANT: Please preserve 3rd-party library license, Inspired from @allex/amd-build-worker/config/util.js */
-    if (isSomeComments(c)) {
-      let text = c.value
-      let preserve = !cache[text]
-      if (preserve) {
-        cache[text] = 1
-        // strip blanks
-        text = text.replace(/\n\s\s*/g, '\n ')
-        if (preserve = !cache[text]) {
-          cache[text] = 1
-          c.value = text
-          if (!~text.indexOf('\n')) {
-            c.nlb = false
-          }
-        }
-      }
-      return preserve
-    }
-  }
-}
-
-const uglifyjs = (code, options = {}) => {
-  const comments = (options.output || 0).comments
-
-  // https://github.com/mishoo/UglifyJS2#minify-options
-  return uglify.minify(code, deepAssign({
-    ie8: true,
-    output: {
-      comments: (comments && comments !== 'some') ? comments : createCommentsFilter()
-    },
-    compress: {
-      drop_console: true,
-      drop_debugger: true
-    },
-    module: true
-  }, options))
-}
-
-const printError = stderr
-
-const isRollupPluginCtor = o =>
-  isFunction(o) && !(['resolveId', 'transform', 'load'].some(k => !!o[k]))
-
-const isNativeRollupCfg = o => {
-  if (!isArray(o)) o = [o]
-  return o.some(o => !!(o.input && o.output))
-}
-
-const getCombinePlugins = (pi, po) => {
-  if ((pi && pi.length) || (po && po.length)) {
-    return mergeArray(pi, po, { pk: 'name' })
-  }
-  // Returns `null` to identify use builtin plugins when both pi, po not set.
-  return null
-}
+const isNativeRollupConfig = o => (isArray(o) ? o : [o]).some(o => !!(o.input && o.output))
 
 export interface Kv<T = any> {
   [key: string]: T;
 }
 
-export interface PluginOption {
-  [name: string]: any;
-}
-
 export interface BundleEntry {
-  code: string;
+  input: any;
+  output: any;
+  globals: Kv;
+  external: (id: string, format: string, defaultFn: any) => boolean | Kv<string>;
 }
 
-export interface WorkerOptions {
+export interface BundlerOptions {
   destDir: string;
-  pluginOptions: KV<PluginOption>;
-  entry: BundleEntry[];
+  plugins: KV<{ [name: string]: any }>;
+  entry: Array<Partial<BundleEntry>>;
+  sourcemap: boolean;
 }
 
-class RollupWorker {
-  private config: any
+export interface RollupContext {
+  input: string;
+  plugins: any[];
+  output: any;
+  options: Omit<BundlerOptions, 'entry'>;
+}
+
+export class Bundler {
+  config: BundlerOptions
 
   /**
    * Multi-entry config for rollup bundle
@@ -138,13 +77,13 @@ class RollupWorker {
    * @constructor
    * @param {Object} config The config for multiple bundle
    */
-  constructor (options: WorkerOptions) {
+  constructor (options: BundlerOptions) {
     if (!options) {
       throw new Error('Illegal constructor arguments.')
     }
 
     // Adapter options is a native rollup configs
-    if (isNativeRollupCfg(options)) {
+    if (isNativeRollupConfig(options)) {
       options = {
         entry: isArray(options) ? options : [options]
       }
@@ -157,31 +96,20 @@ class RollupWorker {
 
     options.entry = isArray(entry) ? entry : [entry]
 
-    this.config = {
+    const config = this.config = {
       plugins: {}, // settings for default plugins
       ...options
     }
+
+    if (config.pluginOptions) {
+      stderr('rb config `pluginOptions` deprecated, use `plugins` instead')
+      if (isEmpty(config.plugins)) {
+        config.plugins = config.pluginOptions
+      }
+    }
   }
 
-  getPluginCfg (name: string, ...args: any[]) {
-    const cfg = this.config
-    let opt = (cfg.pluginOptions || cfg.plugins || 0)[name]
-
-    // project local plugin options
-    if (opt) {
-      opt = result(opt, ...args)
-    }
-
-    // defaults
-    const f = defaultPluginOpts[name]
-    if (f) {
-      opt = f(opt)
-    }
-
-    return opt
-  }
-
-  _checkExternal (id, entry) {
+  _checkExternal (id: string, entry: EntryOptions) {
     const dependencies = entry.dependencies || this.config.dependencies || []
     if (!isArray(dependencies)) {
       return !!dependencies[id]
@@ -189,76 +117,29 @@ class RollupWorker {
     return dependencies.length ? ~dependencies.indexOf(id) : false
   }
 
-  _normalizePlugins (plugins, rollupCfg) {
-    if (!plugins) {
-      // default plugins
-      plugins = ['babel', 'resolve', 'commonjs']
-    } else {
-      plugins = plugins.filter(p => !!p)
-    }
-
-    // combin builtin plugins
-    plugins = mergeArray(builtinPlugins, plugins, { pk: 'name' })
-
-    const output = rollupCfg.output
-
-    return plugins.map(p => {
-      let name
-      if (isString(p)) {
-        name = p
-        p = null
-      }
-
-      // [ name, constructor ]
-      if (isArray(p)) {
-        name = p[0]
-        p = p[1]
-      }
-
-      if (!p && name) {
-        p = getPlugin(name)
-      }
-
-      // apply plugin settings if a plugin constructor
-      if (isRollupPluginCtor(p)) {
-        let settings
-        name = name || p.$name || p.name
-        if (name) {
-          settings = this.getPluginCfg(name, rollupCfg)
-          const out = relativeId(output.file)
-          debug(`plugin settings of "${name}" for "${out}" =>`, settings || 'nil')
-        } else {
-          debug(`anonymous plugin without any settings.`, p)
-        }
-        p = p(settings)
-      }
-
-      return p
-    })
-  }
-
   /**
-   * Normalize config for rollup engine input, output configs.
+   * Normalize bundler config for rollup engine input, output configs.
    *
    * ```
-   * {
-   *  input: { input: 'path/foo.js', ...  },
-   *  output: [
-   *    { [ outputConfig ... ] },
-   *    ...
-   *  ]
-   * }
+   * [
+   *   {
+   *    i: { input: 'path/foo.js', ...  },
+   *    o: [
+   *      { [ outputConfig ... ] },
+   *      ...
+   *    ]
+   *   }
+   * ]
    * ```
    */
-  _normalizeEntry (entry) {
-    entry = { ...entry }
+  _normalizeEntry (entry): Array<{ i: InputConfig; o: OutputConfig; }> {
+    entry = { ...entry } // shallow copy
 
     const destDir = this.config.destDir || '.'
+    let { targets, output, globals } = entry // `targets` should be deprecated
+    let chunks = output || targets
 
-    let { targets, output, globals } = entry
-    let list = output || targets
-
-    if (!list) {
+    if (!chunks) {
       throw new Error('`output` mandatory required')
     }
 
@@ -268,38 +149,73 @@ class RollupWorker {
     delete entry.output
     delete entry.globals
 
-    if (!isArray(list)) {
-      list = [list]
+    if (!isArray(chunks)) {
+      chunks = [chunks]
     }
 
-    return list.map(o => {
-      const { format } = o
+    return chunks.map(chunk => {
+      const { format } = chunk
       if (!format) {
         throw new Error('target output format required.')
       }
 
-      // merge with some defaults
-      const output = { globals, indent: '  ', ...o }
-      let input = { ...entry }
+      const input = { ...entry }
+
+      // merge with builtin and common options
+      const output = {
+        globals,
+        indent: '  ',
+        ...chunk
+      }
 
       // resolve output file with base dir
       if (output.file) {
         output.file = path.resolve(destDir, output.file)
       }
 
-      const plugins = this._normalizePlugins(
-        getCombinePlugins(input.plugins, output.plugins), { ...input, output })
+      const bundleCtx: RollupContext = {
+        ...input,
+        output,
+        options: omit(this.config, 'entry')
+      }
 
-      delete input.plugins
-      delete output.plugins
+      // provides some default plugins if list is empty
+      const plugins = mergeArray(defaultTo(input.plugins, zeroConfigPlugins, isEmpty), builtinPlugins, { pk: 'name' })
+
+      input.plugins = plugins
+        .map(p => createPlugin(p, bundleCtx))
+        .filter(Boolean)
+
+      output.plugins = (output.plugins || [])
+
+      // compress output if filename with `*.min.*` pattern
+      let { file, minimize } = output
+      if (minimize !== false && /\.min\./.test(path.basename(file))) {
+        minimize = true
+      }
+
+      if (minimize) {
+        // Add compress based on terser, with build signature
+        output.plugins.push('minify')
+      }
+
+      // reduce output plugins exists in input
+      output.plugins = output.plugins
+        .reduce((arr, p) => {
+          const name = typeof p === 'string' ? p : p.name
+          if (!find(plugins, (o) => o === p || name && (o === name || o.name === name))) {
+            arr.push(p)
+          }
+          return arr
+        }, [])
+        .map(p => createPlugin(p, bundleCtx))
+        .filter(Boolean)
 
       // external(importee, importer);
-      const defaultExternalFn = (id, checkDependency) => {
+      const defaultExternalFn = (id: string, checkDependency: boolean) => {
         const isDependency = this._checkExternal(id, input)
 
-        checkDependency = typeof checkDependency === 'boolean'
-          ? checkDependency : false
-
+        checkDependency = typeof checkDependency === 'boolean' ? checkDependency : false
         if (checkDependency) {
           // Check cjs and esm with external bundles by the defaults
           return isDependency
@@ -308,110 +224,44 @@ class RollupWorker {
         return !/umd|iife/.test(format) && isDependency
       }
 
-      const _external = input.external; delete input.external // fn(id, format, defaultFn)
-
+      const _external = input.external // fn(id, format, defaultFn)
       const external = !_external
         ? defaultExternalFn
         : (isFunction(_external)
           ? id => _external(id, format, defaultExternalFn) : _external)
 
-      input = { plugins, external, ...input }
-
-      return { i: input, o: output }
+      return {
+        i: {
+          ...input,
+          external
+        },
+        o: {
+          ...output
+        }
+      }
     })
   }
 
-  mapBundles (entry) {
+  run (entry) {
     const list = this._normalizeEntry(entry)
+    const files = list.map(({ o }) => relativeId(o.file || o.dir))
 
     debug('normalized rollup entries => \n%O', list)
-
-    const files = list.map(({ o }) => relativeId(o.file || o.dir))
-    let start = Date.now()
 
     stderr(chalk.cyan(`build ${chalk.bold(relativeId(entry.input))} \u2192 ${chalk.bold(files.join(', '))} ...`))
 
     return sequence(list, async ({ i, o }): Promise<RollupBuild> => {
-
-      // create a bundle
+      const start = Date.now()
       const bundle: RollupBuild = await rollup.rollup(i)
-      let { file, minimize } = o
+      const out = await bundle.write(o)
 
-      if (file && /\.min\./.test(path.basename(file))) {
-        minimize = true
-      }
-
-      // generate code and a sourcemap
-      let { output: [{ code }] }: RollupOutput = await bundle.generate(o) // eslint-disable-line no-unused-vars
-
-      if (!minimize) {
-        // write bundle result first
-        await bundle.write(o)
-        stderr(chalk.green(`created ${chalk.bold(relativeId(o.file))} (${prettyBytes(code.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
-      }
-
-      // Add minimize if not disabled explicitly.
-      if (minimize !== false && !['es', 'cjs'].includes(o.format)) {
-        minimize = minimize || { ext: '.min' }
-      }
-
-      if (minimize) {
-        start = Date.now()
-        const minified: MinifyOutput = uglifyjs({ [file]: code }, this.getPluginCfg('uglifyjs'))
-
-        const ex = minified.error
-        if (ex) {
-          if (ex.name === 'SyntaxError') {
-            printError(`Parse error at ${ex.filename}:${ex.line},${ex.col}`)
-            const lines = code.split(/\r?\n/)
-            let col = ex.col
-            let line = lines[ex.line - 1]
-            if (!line && !col) {
-              line = lines[ex.line - 2]
-              col = line.length
-            }
-            if (line) {
-              const limit = 70
-              if (col > limit) {
-                line = line.slice(col - limit)
-                col = limit
-              }
-              printError(line.slice(0, 80))
-              printError(line.slice(0, col).replace(/\S/g, ' ') + '^')
-            }
-          }
-          throw ex
-        }
-
-        code = minified.code
-
-        // generate a extra minimize file (*.min.js)
-        let ext = minimize.ext
-        if (ext) {
-          ext = ext.charAt(0) === '.' ? ext : `.${ext}`
-          file = path.join(path.dirname(file), `${path.basename(file, '.js')}${ext}.js`)
-        }
-
-        let banner = (o.banner || '').trim()
-        if (banner && code.substring(0, banner.length) !== banner) {
-          banner = banner.replace(/\r\n?|[\n\u2028\u2029]|\s*$/g, '\n')
-          code = banner + code
-        }
-
-        const footer = (o.footer || `/* [hash] */`).replace(/\[hash\]/g, md5(code))
-        code = code + os.EOL + footer
-
-        // write minify
-        await write(file, code, start)
-        stderr(chalk.green(`created ${chalk.bold(relativeId(file))} (${prettyBytes(code.length)}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
-      }
-
+      stderr(chalk.green(`created ${chalk.bold(relativeId(o.file))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       return bundle
     })
   }
 
   build () {
-    return sequence(this.config.entry, o => this.mapBundles(o))
+    return sequence(this.config.entry, o => this.run(o))
   }
 
   watch (options) {
@@ -425,11 +275,4 @@ class RollupWorker {
     })
     return rollup.watch(watchOptions)
   }
-}
-
-export {
-  version,
-  RollupWorker,
-  getPlugin,
-  loadConfigFile
 }

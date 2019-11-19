@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { relativeId } from './utils'
+import { relativeId } from './'
 
 if (!chalk.supportsColor) chalk.enabled = false
 

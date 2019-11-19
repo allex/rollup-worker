@@ -1,9 +1,11 @@
 import fs from 'fs'
 import p from 'path'
 
-import { loadConfigFile, RollupWorker, version } from 'rollup-worker'
-import { stderr } from '../logging'
+import { Bundler, loadConfigFile, version } from 'rollup-worker'
+
 import { relativeId } from '../utils'
+import { stderr } from '../utils/logging'
+
 import watch from './watch'
 
 const argv = process.argv.slice(2)
@@ -47,7 +49,7 @@ Usage: rollup-bundle [-w] [--config | -c] <config_file.js>
   process.exit(1)
 }
 
-const build = configs => new RollupWorker(configs).build()
+const build = configs => new Bundler(configs).build()
 
 loadConfigFile(configFile)
   .then(configs => {

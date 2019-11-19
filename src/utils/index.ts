@@ -1,3 +1,5 @@
+import fs from 'fs'
+import mkdirp from 'mkdirp'
 import path from 'path'
 
 const absolutePath = /^(?:\/|(?:[A-Za-z]:)?[\\|/])/
@@ -24,3 +26,11 @@ export function mergeArray (p1, p2, { pk } = { pk: 'name' }) {
   }
   return p1
 }
+
+export const writeFile = (file: string, code: string): Promise<boolean> => {
+  return new Promise<boolean>((resolve, reject) => {
+    mkdirp.sync(path.dirname(file))
+    fs.writeFile(file, code, err => err ? reject(err) : resolve(true))
+  })
+}
+

@@ -7,30 +7,15 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
+import { merge } from '@fdio/utils'
 import path from 'path'
 
-// some builtin plugins
-import resolve from '@allex/rollup-plugin-node-resolve'
-import babel from 'rollup-plugin-babel'
-import commonjs from 'rollup-plugin-commonjs'
-import json from 'rollup-plugin-json5'
-import replace from 'rollup-plugin-replace'
-
-import { deepAssign } from '@fdio/utils'
-
-export const pluginImpls = {
-  resolve,
-  babel,
-  commonjs,
-  json,
-  replace
-}
-
 export const defaultPluginOpts = {
-  resolve (settings) {
+  resolve (o: PluginOptions) {
     // For more resolve options see <https://www.npmjs.com/package/resolve>
     // pay attention to [module/jsnext/browser/main] orders
-    return { jsnext: true,
+    return {
+      jsnext: true,
       module: true,
       browser: true,
       main: true,
@@ -39,41 +24,56 @@ export const defaultPluginOpts = {
       customResolveOptions: {
         paths: [path.resolve(process.cwd(), 'node_modules')]
       },
-      ...settings }
+      ...o }
   },
 
-  json (settings) {
-    return { indent: '  ',
-      ...settings }
-  },
-
-  babel (settings) {
+  json (o: PluginOptions) {
     return {
-      ...settings }
+      indent: '  ',
+      ...o }
   },
 
-  commonjs (settings) {
+  babel (o: PluginOptions) {
+    return {
+      ...o }
+  },
+
+  commonjs (o: PluginOptions) {
     return {
       extensions: ['.js', '.ts', '.coffee'],
-      ...settings }
+      ...o }
   },
 
-  typescript (settings) {
-    return deepAssign({
+  typescript (o: PluginOptions, ctx: RollupContext) {
+    const { output: { format } } = ctx
+    return merge({
       check: true,
       abortOnError: false,
+      cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
       tsconfigOverride: {
         compilerOptions: {
           newLine: 'lf'
         }
       }
-    }, settings)
+    }, o)
   },
 
-  replace (settings) {
+  replace (o: PluginOptions) {
     return {
       NODE_ENV: process.env.NODE_ENV || 'production',
-      ...settings
+      ...o
     }
+  },
+
+  minify (o: PluginOptions) {
+    // options for rollup-plugin-terser <https://github.com/terser/terser>
+    return merge({
+      module: true,
+      ie8: true,
+      compress: {
+        drop_console: true
+      },
+      signature: true
+    }, o)
   }
 }

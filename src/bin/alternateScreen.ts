@@ -1,5 +1,6 @@
 import ansiEscapes from 'ansi-escapes'
-import { stderr } from '../logging'
+
+import { stderr } from '../utils/logging'
 
 const SHOW_ALTERNATE_SCREEN = '\u001B[?1049h'
 const HIDE_ALTERNATE_SCREEN = '\u001B[?1049l'
