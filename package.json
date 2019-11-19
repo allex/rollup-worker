@@ -43,6 +43,7 @@
     "terser": "^3.16.1"
   },
   "devDependencies": {
+    "@fdio/utils": "^1.1.1-alpha.2",
     "ansi-escapes": "^3.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",

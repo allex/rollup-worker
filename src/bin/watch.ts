@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import dateTime from 'date-time'
 import prettyMs from 'pretty-ms'
 import signalExit from 'signal-exit'
+
 import batchWarnings from '../batchWarnings'
 import { handleError, stderr } from '../logging'
 import { relativeId } from '../utils'

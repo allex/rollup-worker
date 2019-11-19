@@ -16,7 +16,7 @@ import commonjs from 'rollup-plugin-commonjs'
 import json from 'rollup-plugin-json5'
 import replace from 'rollup-plugin-replace'
 
-import { deepAssign } from '../utils'
+import { deepAssign } from '@fdio/utils'
 
 export const pluginImpls = {
   resolve,

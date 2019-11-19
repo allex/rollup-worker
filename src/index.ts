@@ -17,10 +17,13 @@ import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
 import rollup from 'rollup'
 import uglify from 'terser'
+
+import { deepAssign, isArray, isFunction, isString, sequence } from '@fdio/utils'
+
+import { mergeArray, relativeId, result } from './utils'
 import loadConfigFile from './loadConfigFile'
 import { stderr } from './logging'
 import { defaultPluginOpts, getPlugin } from './plugins'
-import { deepAssign, isArray, isFunction, isString, mergeArray, relativeId, result, sequence } from './utils'
 import { version } from '../package.json'
 import { md5 } from '@allex/md5'
 
@@ -29,7 +32,7 @@ const debug = Debug('rollup-worker')
 // some builtin plugins
 const builtinPlugins = ['json', 'replace']
 
-interface OutputMinify {
+interface MinifyOutput {
   code: string;
   map?: SourceMap;
   error?: Error
@@ -45,6 +48,7 @@ function write(file, code): Promise<any> {
 // multiline comment
 const COMMENT_MULTILINE = 'comment2'
 
+// By default, comments with patterns of @license, @preserve or starting with /*! are preserved
 const isSomeComments = comment => comment.type === COMMENT_MULTILINE && /^!|@preserve|@license|@cc_on|\blicensed\b/i.test(comment.value)
 
 const createCommentsFilter = () => {
@@ -351,7 +355,7 @@ class RollupWorker {
 
       if (minimize) {
         start = Date.now()
-        const minified: OutputMinify = uglifyjs({ [file]: code }, this.getPluginCfg('uglifyjs'))
+        const minified: MinifyOutput = uglifyjs({ [file]: code }, this.getPluginCfg('uglifyjs'))
 
         const ex = minified.error
         if (ex) {
