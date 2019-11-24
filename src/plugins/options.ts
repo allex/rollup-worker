@@ -8,10 +8,18 @@
  */
 
 import { merge } from '@fdio/utils'
-import path from 'path'
+import { basename, dirname, extname, relative, resolve } from 'path'
 
-export const defaultPluginOpts = {
-  resolve (o: PluginOptions) {
+// Extensions to use when resolving modules
+const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
+
+interface IPluginOptionsFactory {
+  [name: string]: <T extends PluginOptions> (options: T, ctx: RollupContext) => T;
+}
+
+// Provide default options for builtin plugins
+export const defaultPluginOpts: IPluginOptionsFactory = {
+  resolve (o) {
     // For more resolve options see <https://www.npmjs.com/package/resolve>
     // pay attention to [module/jsnext/browser/main] orders
     return {
@@ -22,50 +30,93 @@ export const defaultPluginOpts = {
       // prefer local modules for browser
       preferBuiltins: false,
       customResolveOptions: {
-        paths: [path.resolve(process.cwd(), 'node_modules')]
+        paths: [resolve(process.cwd(), 'node_modules')]
       },
       ...o }
   },
 
-  json (o: PluginOptions) {
+  json (o) {
     return {
       indent: '  ',
       ...o }
   },
 
-  babel (o: PluginOptions) {
-    return {
-      ...o }
-  },
-
-  commonjs (o: PluginOptions) {
-    return {
-      extensions: ['.js', '.ts', '.coffee'],
-      ...o }
-  },
-
-  typescript (o: PluginOptions, ctx: RollupContext) {
-    const { output: { format } } = ctx
-    return merge({
-      check: true,
-      abortOnError: false,
-      cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
-      tsconfigOverride: {
-        compilerOptions: {
-          newLine: 'lf'
+  // For internal custom babel configs
+  babel (o, { input, output, options }) {
+    const {
+      defines = {}
+    } = options
+    const useTypescript = ['.ts', '.tsx'].includes(extname(input))
+    const modern = output.format === 'modern'
+    return merge(
+      {
+        extensions: EXTENSIONS,
+        exclude: 'node_modules/**',
+        passPerPreset: true, // @see https://babeljs.io/docs/en/options#passperpreset
+        custom: {
+          defines,
+          modern,
+          compress: !!options.compress,
+          targets: options.target === 'node' ? { node: '8' } : undefined,
+          pragma: options.jsx || 'h',
+          pragmaFrag: options.jsxFragment || 'Fragment',
+          typescript: !!useTypescript
         }
-      }
-    }, o)
+      }, o
+    )
   },
 
-  replace (o: PluginOptions) {
+  commonjs (o, { options }) {
+    return {
+      extensions: EXTENSIONS,
+      sourcemap: options.sourcemap,
+      ...o }
+  },
+
+  typescript (o, { options, output: { format } }) {
+    return merge(
+      {
+        check: true,
+        abortOnError: false,
+        cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
+        tsconfigDefaults: {
+          compilerOptions: {
+            sourceMap: options.sourcemap,
+            jsx: 'react',
+            declaration: true
+          }
+        },
+        // some ts options to been force overwrit
+        tsconfigOverride: {
+          compilerOptions: {
+            target: 'esnext',
+            newLine: 'lf'
+          }
+        }
+      }, o
+    )
+  },
+
+  globals (o, { output: { format } }) {
+    return {
+      ...(
+        ['es', 'cjs'].includes(format) ? {
+          process: false,
+          buffer: false
+        } : {}
+      ),
+      ...o
+    }
+  },
+
+  replace (o) {
     return {
       NODE_ENV: process.env.NODE_ENV || 'production',
       ...o
     }
   },
 
-  minify (o: PluginOptions) {
+  minify (o) {
     // options for rollup-plugin-terser <https://github.com/terser/terser>
     return merge({
       module: true,

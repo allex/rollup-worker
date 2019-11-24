@@ -41,7 +41,7 @@ if (!configFile || !fs.existsSync(configFile)) {
     msg = `config file "${relativeId(configFile)}" not found.`
   }
   stderr(`
-Usage: rollup-bundle [-w] [--config | -c] <config_file.js>
+Usage: rb [-w] [--config | -c] <config_file.js>
 
 > ${msg}
 `

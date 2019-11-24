@@ -13,7 +13,7 @@ import fs from 'fs'
 import path from 'path'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
-import rollup from 'rollup'
+import rollup, { RollupBuild } from 'rollup'
 
 import {
   defaultTo, find, get, isArray, isEmpty, isFunction, isString, merge, omit, sequence
@@ -58,7 +58,11 @@ export interface BundlerOptions {
   destDir: string;
   plugins: KV<{ [name: string]: any }>;
   entry: Array<Partial<BundleEntry>>;
-  sourcemap: boolean;
+  compress?: boolean;
+  sourcemap?: boolean;
+  jsx?: string;
+  jsxFragment?: string;
+  target?: 'web' | 'node';
 }
 
 export interface RollupContext {
@@ -119,18 +123,6 @@ export class Bundler {
 
   /**
    * Normalize bundler config for rollup engine input, output configs.
-   *
-   * ```
-   * [
-   *   {
-   *    i: { input: 'path/foo.js', ...  },
-   *    o: [
-   *      { [ outputConfig ... ] },
-   *      ...
-   *    ]
-   *   }
-   * ]
-   * ```
    */
   _normalizeEntry (entry): Array<{ i: InputConfig; o: OutputConfig; }> {
     entry = { ...entry } // shallow copy
