@@ -110,6 +110,7 @@ export const getPluginCfg = (name: string, ctx?: RollupContext): PluginOptions |
       cfg = f(cfg, ctx)
     }
   }
+
   // #3 mixin output localize overrides
   const override = get(ctx, `output.${name}`)
   if (override) {

@@ -116,13 +116,17 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
     }
   },
 
-  minify (o) {
+  minify (o, { output: { format } }) {
     // options for rollup-plugin-terser <https://github.com/terser/terser>
     return merge({
       module: true,
       ie8: true,
+      toplevel: format === 'cjs' || format === 'es',
       compress: {
-        drop_console: true
+        drop_console: !(format === 'cjs' || format === 'es')
+      },
+      output: {
+        indent_level: 2
       },
       signature: true
     }, o)

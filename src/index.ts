@@ -65,11 +65,13 @@ export interface BundlerOptions {
   target?: 'web' | 'node';
 }
 
+type RollupContextOptions = Omit<BundlerOptions, 'entry'>
+
 export interface RollupContext {
   input: string;
   plugins: any[];
   output: any;
-  options: Omit<BundlerOptions, 'entry'>;
+  options: RollupContextOptions;
 }
 
 export class Bundler {
@@ -165,10 +167,12 @@ export class Bundler {
         output.file = path.resolve(destDir, output.file)
       }
 
+      const options: RollupContextOptions = omit(this.config, 'entry')
+
       const bundleCtx: RollupContext = {
         ...input,
         output,
-        options: omit(this.config, 'entry')
+        options
       }
 
       // provides some default plugins if list is empty
@@ -180,12 +184,13 @@ export class Bundler {
 
       output.plugins = (output.plugins || [])
 
-      // compress output if filename with `*.min.*` pattern
       let { file, minimize } = output
-      if (minimize !== false && /\.min\./.test(path.basename(file))) {
-        minimize = true
-      }
 
+      // enable minimize if filename with `*.min.*` pattern, default to true
+      if (minimize !== false) {
+        minimize = options.compress !== false
+          || /\.min\./.test(path.basename(file))
+      }
       if (minimize) {
         // Add compress based on terser, with build signature
         output.plugins.push('minify')
