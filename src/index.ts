@@ -9,55 +9,37 @@
 
 import chalk from 'chalk'
 import Debug from 'debug'
-import fs from 'fs'
-import path from 'path'
+import { basename, resolve } from 'path'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
-import rollup, { RollupBuild } from 'rollup'
+import rollup, { InputOption, InputOptions, OutputOptions, RollupBuild, RollupOutput } from 'rollup'
 
 import {
-  defaultTo, find, get, isArray, isEmpty, isFunction, isString, merge, omit, sequence
+  defaultTo, find, isArray, isEmpty, isFunction, omit, sequence
 } from '@fdio/utils'
 
+import { createPlugin } from './plugins'
 import { mergeArray, relativeId } from './utils'
 import { stderr } from './utils/logging'
-
-import { createPlugin } from './plugins'
 
 export { version } from '../package.json'
 export { loadConfigFile } from './loadConfigFile'
 
-const debug = Debug('rollup-worker')
-
-// default plugins (for zero config)
-const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
-
-// some builtin plugins
-const builtinPlugins = ['json', 'replace']
-
-interface MinifyOutput {
-  code: string;
-  map?: SourceMap;
-  error?: Error
-}
-
-const isNativeRollupConfig = o => (isArray(o) ? o : [o]).some(o => !!(o.input && o.output))
-
-export interface Kv<T = any> {
-  [key: string]: T;
-}
-
-export interface BundleEntry {
-  input: any;
-  output: any;
+export interface BundlerEntry {
+  input: InputOption;
+  targets?: OutputOptions; // deprecated
+  output: OutputOptions;
+  plugins: Kv;
   globals: Kv;
   external: (id: string, format: string, defaultFn: any) => boolean | Kv<string>;
 }
 
 export interface BundlerOptions {
-  destDir: string;
-  plugins: KV<{ [name: string]: any }>;
-  entry: Array<Partial<BundleEntry>>;
+  destDir?: string;
+  plugins?: object;
+  pluginOptions?: object; // deprecated
+  dependencies?: Kv;
+  entry: BundlerEntry[];
   compress?: boolean;
   sourcemap?: boolean;
   jsx?: string;
@@ -67,10 +49,24 @@ export interface BundlerOptions {
 
 type RollupContextOptions = Omit<BundlerOptions, 'entry'>
 
-export interface RollupContext {
-  input: string;
-  plugins: any[];
-  output: any;
+const debug = Debug('rollup-worker')
+
+// default plugins (for zero config)
+const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
+
+// some builtin plugins
+const builtinPlugins = ['json', 'replace']
+
+const isNativeRollupConfig = o => (isArray(o) ? o : [o]).some(o => !!(o.input && o.output))
+
+const transformFromRollupConfig = (o: object): BundlerOptions => {
+  return {
+    entry: isArray(o) ? o : [o]
+  }
+}
+
+export interface RollupContext extends InputOptions {
+  output: OutputOptions;
   options: RollupContextOptions;
 }
 
@@ -90,9 +86,7 @@ export class Bundler {
 
     // Adapter options is a native rollup configs
     if (isNativeRollupConfig(options)) {
-      options = {
-        entry: isArray(options) ? options : [options]
-      }
+      options = transformFromRollupConfig(options)
     }
 
     const entry = options.entry
@@ -100,9 +94,11 @@ export class Bundler {
       throw new Error('`entry` not valid')
     }
 
-    options.entry = isArray(entry) ? entry : [entry]
+    if (!isArray(entry)) {
+      options.entry = [entry as BundlerEntry]
+    }
 
-    const config = this.config = {
+    const config = {
       plugins: {}, // settings for default plugins
       ...options
     }
@@ -113,10 +109,14 @@ export class Bundler {
         config.plugins = config.pluginOptions
       }
     }
+
+    config.destDir = resolve(config.destDir || './lib')
+
+    this.config = config
   }
 
-  _checkExternal (id: string, entry: EntryOptions) {
-    const dependencies = entry.dependencies || this.config.dependencies || []
+  _checkExternal (id: string, input: InputOptions) {
+    const dependencies = input.dependencies || this.config.dependencies || []
     if (!isArray(dependencies)) {
       return !!dependencies[id]
     }
@@ -126,22 +126,19 @@ export class Bundler {
   /**
    * Normalize bundler config for rollup engine input, output configs.
    */
-  _normalizeEntry (entry): Array<{ i: InputConfig; o: OutputConfig; }> {
-    entry = { ...entry } // shallow copy
+  _normalizeEntry (entry: BundlerEntry): Array<{ i: InputOptions; o: OutputOptions; }> {
+    const destDir = this.config.destDir
+    const {
+      targets, // `targets` be deprecated, use output instead
+      output,
+      globals = {},
+      ...baseInput
+    } = entry
 
-    const destDir = this.config.destDir || '.'
-    let { targets, output, globals } = entry // `targets` should be deprecated
     let chunks = output || targets
-
     if (!chunks) {
       throw new Error('`output` mandatory required')
     }
-
-    globals = globals || {}
-
-    delete entry.targets
-    delete entry.output
-    delete entry.globals
 
     if (!isArray(chunks)) {
       chunks = [chunks]
@@ -153,7 +150,7 @@ export class Bundler {
         throw new Error('target output format required.')
       }
 
-      const input = { ...entry }
+      const input = { ...baseInput }
 
       // merge with builtin and common options
       const output = {
@@ -164,7 +161,7 @@ export class Bundler {
 
       // resolve output file with base dir
       if (output.file) {
-        output.file = path.resolve(destDir, output.file)
+        output.file = resolve(destDir, output.file)
       }
 
       const options: RollupContextOptions = omit(this.config, 'entry')
@@ -189,7 +186,7 @@ export class Bundler {
       // enable minimize if filename with `*.min.*` pattern, default to true
       if (minimize !== false) {
         minimize = options.compress !== false
-          || /\.min\./.test(path.basename(file))
+          || /\.min\./.test(basename(file))
       }
       if (minimize) {
         // Add compress based on terser, with build signature
@@ -239,7 +236,7 @@ export class Bundler {
     })
   }
 
-  run (entry) {
+  run (entry: BundlerEntry) {
     const list = this._normalizeEntry(entry)
     const files = list.map(({ o }) => relativeId(o.file || o.dir))
 
@@ -250,7 +247,7 @@ export class Bundler {
     return sequence(list, async ({ i, o }): Promise<RollupBuild> => {
       const start = Date.now()
       const bundle: RollupBuild = await rollup.rollup(i)
-      const out = await bundle.write(o)
+      const out: RollupOutput = await bundle.write(o)
 
       stderr(chalk.green(`created ${chalk.bold(relativeId(o.file))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       return bundle

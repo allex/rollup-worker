@@ -7,8 +7,8 @@ import { defaultPluginOpts } from './options'
 
 import customBabel from './babel-custom'
 
-type PluginStruct = PluginImpl | Plugin
-type PluginConfig = string | PluginStruct | [string, PluginStruct]
+export type PluginStruct = PluginImpl | Plugin
+export type PluginConfig = string | PluginStruct | [string, PluginStruct]
 
 // defs builtin plugins alias
 // For more builtin plugins see package.json#dependencies pattern with `rollup-plugin-xxx`
