@@ -4,6 +4,8 @@ import { createConfigItem } from '@babel/core'
 import { isEmpty, merge, omit } from '@fdio/utils'
 import babelPlugin from 'rollup-plugin-babel'
 
+import { resolvePackage } from '../utils'
+
 const isTruthy = isEmpty
 
 const uniq = <T> (list: T[]): T[] => list.reduce((p, o) => {
@@ -46,7 +48,7 @@ const mergeConfigItems = (type, ...configItemsToMerge) => {
 
 const createConfigItems = (type, items) => {
   return items.map(({ name, ...options }) => {
-    return createConfigItem([require.resolve(name), options], { type })
+    return createConfigItem([resolvePackage(name), options], { type })
   })
 }
 
@@ -139,14 +141,22 @@ export default babelPlugin.custom(babelCore => {
               targets: customOptions.modern
                 ? ESMODULES_TARGET
                 : customOptions.targets,
-                modules: false,
-                loose: true,
-                useBuiltIns: false,
-                exclude: ['transform-async-to-generator', 'transform-regenerator']
+              modules: false,
+              loose: true,
+              useBuiltIns: false,
+              exclude: ['transform-async-to-generator', 'transform-regenerator']
             }
           ]),
           ...(babelOptions.presets || [])
         ]
+      }
+
+      if (customOptions.vue) {
+        babelOptions.presets.push(
+          ...createConfigItems('presets', [
+            { name: '@vue/babel-preset-jsx' }
+          ])
+        )
       }
 
       // Merge babelrc & our plugins together

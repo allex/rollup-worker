@@ -2,7 +2,7 @@ import { get, hasOwn, isArray, isFunction, isString, memoize, merge } from '@fdi
 import resolveFrom from 'resolve-from'
 import { Plugin, PluginImpl } from 'rollup'
 
-import { relativeId, result } from '../utils'
+import { localRequire, relativeId, result } from '../utils'
 import { defaultPluginOpts } from './options'
 
 import customBabel from './babel-custom'
@@ -26,17 +26,6 @@ const builtinImpls = {
 
 const isRollupPluginCtor = o =>
   typeof o === 'function' && !(['resolveId', 'transform', 'load', 'renderChunk'].some(k => !!o[k]))
-
-const localRequire = (
-  name: string,
-  { silent, cwd }: { silent?: boolean; cwd?: string } = {}
-) => {
-  cwd = cwd || process.cwd()
-  const resolved = silent
-    ? resolveFrom.silent(cwd, name)
-    : resolveFrom(cwd, name)
-  return resolved && require(resolved)
-}
 
 const pluginNameAliasesReverse = Object.keys(pluginNameAliases)
   .reduce((o, k) => (o[pluginNameAliases[k]] = k, o), {})

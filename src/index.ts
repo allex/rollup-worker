@@ -22,6 +22,8 @@ import { createPlugin } from './plugins'
 import { mergeArray, relativeId } from './utils'
 import { stderr } from './utils/logging'
 
+import configLoader from './utils/configLoader'
+
 export { version } from '../package.json'
 export { loadConfigFile } from './loadConfigFile'
 
@@ -35,7 +37,8 @@ export interface BundlerEntry {
 }
 
 export interface BundlerOptions {
-  destDir?: string;
+  rootDir?: string; // default `./`
+  destDir?: string; // default `./lib`
   plugins?: object;
   pluginOptions?: object; // deprecated
   dependencies?: Kv;
@@ -45,6 +48,8 @@ export interface BundlerOptions {
   jsx?: string;
   jsxFragment?: string;
   target?: 'web' | 'node';
+  vue?: boolean;
+  react?: boolean;
 }
 
 type RollupContextOptions = Omit<BundlerOptions, 'entry'>
@@ -110,9 +115,35 @@ export class Bundler {
       }
     }
 
+    config.rootDir = resolve(config.rootDir || '.')
     config.destDir = resolve(config.destDir || './lib')
 
     this.config = config
+    this.rootDir = config.rootDir
+  }
+
+  async _init () {
+    const { config } = this
+
+    // resolve project package.json
+    const pkg = await configLoader.load({
+      files: ['package.json'],
+      cwd: config.rootDir
+    }) || {}
+
+    // Auto detect [vue, react] by parse package dependencies
+    if (pkg.data) {
+      const { dependencies, devDependencies } = pkg.data
+      const deps = Object.keys({ ...dependencies, ...devDependencies })
+      this.config = ['vue', 'react'].reduce((p, k) => {
+        if (!p.hasOwnProperty(k)) {
+          p[k] = deps.some(k => new RegExp(`\b${k}\b`).test(k))
+        }
+        return p
+      }, config)
+    }
+
+    this.pkg = pkg
   }
 
   _checkExternal (id: string, input: InputOptions) {
@@ -254,13 +285,15 @@ export class Bundler {
     })
   }
 
-  build () {
+  async build () {
+    await this._init()
     return sequence(this.config.entry, o => this.run(o))
   }
 
-  watch (options) {
+  async watch (options) {
     const watchOptions = []
     const watch = { chokidar: true, ...options }
+    await this._init()
     this.config.entry.forEach(entry => {
       const list = this._normalizeEntry(entry)
       list.forEach(({ i, o }) => {

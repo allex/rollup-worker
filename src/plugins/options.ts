@@ -57,10 +57,13 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
           defines,
           modern,
           compress: !!options.compress,
+          sourcemap: options.sourcemap,
           targets: options.target === 'node' ? { node: '8' } : undefined,
           pragma: options.jsx || 'h',
           pragmaFrag: options.jsxFragment || 'Fragment',
-          typescript: !!useTypescript
+          typescript: !!useTypescript,
+          vue: !!options.vue,
+          react: !!options.react
         }
       }, o
     )
