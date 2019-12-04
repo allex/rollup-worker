@@ -10,6 +10,9 @@
 import { merge } from '@fdio/utils'
 import { basename, dirname, extname, relative, resolve } from 'path'
 
+import autoprefixer from 'autoprefixer'
+import cssnano from 'cssnano'
+
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
 
@@ -132,6 +135,21 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
         indent_level: 2
       },
       signature: true
+    }, o)
+  },
+
+  postcss (o, { options }) {
+    return merge({
+      plugins: [
+        autoprefixer(),
+        options.compress !== false &&
+          cssnano({
+            preset: 'default'
+          })
+      ].filter(Boolean),
+      // only write out CSS for the first bundle (avoids pointless extra files):
+      inject: true,
+      extract: false
     }, o)
   }
 }
