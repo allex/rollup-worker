@@ -13,12 +13,22 @@ import { basename, dirname, extname, relative, resolve } from 'path'
 import autoprefixer from 'autoprefixer'
 import cssnano from 'cssnano'
 
+import configLoader from '../utils/configLoader'
+
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
 
 interface IPluginOptionsFactory {
   [name: string]: <T extends PluginOptions> (options: T, ctx: RollupContext) => T;
 }
+
+const findTsconfig = (
+  entryFile: string,
+  {
+    cwd = dirname(entryFile),
+    stopDir = process.cwd()
+  }: { cwd?: string; stopDir: string; } = {}
+) => configLoader.resolve({ cwd, stopDir, files: ['tsconfig.json'] })
 
 // Provide default options for builtin plugins
 export const defaultPluginOpts: IPluginOptionsFactory = {
@@ -79,7 +89,8 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
       ...o }
   },
 
-  typescript (o, { options, output: { format } }) {
+  typescript (o, { input, options, output: { format } }) {
+    const tsconfig = o.tsconfig || findTsconfig(input)
     return merge(
       {
         check: true,
@@ -99,7 +110,7 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
             newLine: 'lf'
           }
         }
-      }, o
+      }, { ...o, tsconfig }
     )
   },
 
