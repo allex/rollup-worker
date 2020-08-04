@@ -1,5 +1,7 @@
 import fs from 'fs'
 import p from 'path'
+import Debug from 'debug'
+import { pick } from '@fdio/utils'
 
 import { Bundler, loadConfigFile, version } from 'rollup-worker'
 
@@ -8,27 +10,75 @@ import { stderr } from '../utils/logging'
 
 import watch from './watch'
 
-const argv = process.argv.slice(2)
-let configFile = p.resolve(process.cwd(), '.fssrc.js')
-let watchMode = false
+const debug = Debug('rollup-worker:cli')
 
-// parse --config from argv
+let configFile = p.resolve(process.cwd(), '.fssrc.js')
+
+const argv = process.argv.slice(2)
+const commonOptions = {}
+
+const boolValues = {
+  'yes': true,
+  'no': false,
+  'true': true,
+  'false': false,
+  'on': true,
+  'off': true
+}
+
+const aliases = {
+  'w': 'watch',
+  'c': 'config'
+}
+
+const parseBoolValue = (v: string): boolean | null => boolValues.hasOwnProperty(v) ? boolValues[v] : null
+const defaultTo = <T> (v: any, defval: T): T => v != null ? v as T : defval
+
+// parse command args
 while (argv.length) {
-  const k = argv.shift(), v = argv[0]
+  let k: string = argv.shift()
+  let v: any = argv[0] || ''
+
+  // keep any remaining arguments to the positional parameters
+  if (k === '--') {
+    break;
+  }
+
+  if (k.indexOf('-') !== 0) {
+    continue
+  }
+
+  // parse k/v tuple, eg. --compress=false
+  const match = /(\w+)=(\w+)/.exec(k)
+  if (match) {
+    k = match[1]
+    v = match[2]
+  }
+
+  if (v.indexOf('-') === 0) {
+    v = ''
+  } else {
+    argv.shift()
+  }
+
+  k = k.replace(/^--?/, '')
+  k = aliases[k] || k
+
   switch (k) {
-    case '--version':
+    case 'version':
       stderr(`v${version}`)
       process.exit(1)
       break
-    case '-c':
-    case '--config':
-      if (v && v.charAt(0) !== '-') {
+    case 'config':
+      if (v) {
         configFile = p.resolve(process.cwd(), v)
-        argv.shift()
       }
       break
-    case '-w':
-      watchMode = true
+    case 'compress':
+      commonOptions.compress = defaultTo(parseBoolValue(v), true)
+      break
+    case 'watch':
+      commonOptions.watchMode = v == '' ? true : v
       break
   }
 }
@@ -53,11 +103,22 @@ const build = configs => new Bundler(configs).build()
 
 loadConfigFile(configFile)
   .then(configs => {
-    configs = configs.map(o => o.rollup || o)
+    const nargs: Kv = {}
+
+    const compress = commonOptions.compress
+    if (compress !== undefined) {
+      nargs.compress = compress
+    }
+
+    configs = configs.map(o => ({ ...(o.rollup || o), ...nargs }))
+
+    debug(configs)
+
     if (configs.some(o => o.entry)) {
       configs = configs[0]
     }
-    if (watchMode) {
+
+    if (commonOptions.watchMode) {
       watch(configFile, configs)
     } else {
       // build
