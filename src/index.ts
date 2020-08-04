@@ -238,8 +238,11 @@ export class Bundler {
 
       // external(importee, importer);
       const defaultExternalFn = (id: string, checkDependency: boolean) => {
-        const isDependency = this._checkExternal(id, input)
+        if (id === 'babel-plugin-transform-async-to-promises/helpers') {
+          return false
+        }
 
+        const isDependency = this._checkExternal(id, input)
         checkDependency = typeof checkDependency === 'boolean' ? checkDependency : false
         if (checkDependency) {
           // Check cjs and esm with external bundles by the defaults

@@ -103,7 +103,7 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
             declaration: true
           }
         },
-        // some ts options to been force overwrit
+        // some ts options to been force overwrite
         tsconfigOverride: {
           compilerOptions: {
             target: 'esnext',
