@@ -2,7 +2,22 @@ import progressPlugin from 'rollup-plugin-progress'
 import typescript from 'rollup-plugin-typescript'
 import { eslint } from 'rollup-plugin-eslint'
 
-import { dependencies } from './package.json'
+import { name, version, license, author, description, dependencies } from './package.json'
+
+const banner = (name, short = false) => {
+  let s
+  if (short) {
+    s = `/*! ${name} v${version} | ${license} licensed | ${author.name || author} */`
+  } else {
+    s = `/**
+ * ${name} v${version} - ${description}
+ *
+ * @author ${author}
+ * Released under the ${license} license.
+ */`
+  }
+  return s
+}
 
 const progress = () => {
   if (process.env.TRAVIS || process.env.NETLIFY) {
@@ -20,8 +35,8 @@ export default {
       input: 'src/index.ts',
       plugins: [ 'resolve', [typescript], 'commonjs', eslint, progress ],
       output: [
-        { file: 'lib/rollup-worker.js', format: 'cjs' },
-        { file: 'lib/rollup-worker.es.js', format: 'es' }
+        { file: 'lib/rollup-worker.js', format: 'cjs', banner: banner(name, true) },
+        { file: 'lib/rollup-worker.es.js', format: 'es', banner: banner(name, true) }
       ]
     },
     {
