@@ -1,7 +1,7 @@
+import { pick } from '@fdio/utils'
+import Debug from 'debug'
 import fs from 'fs'
 import p from 'path'
-import Debug from 'debug'
-import { pick } from '@fdio/utils'
 
 import { Bundler, loadConfigFile, version } from 'rollup-worker'
 
@@ -18,17 +18,17 @@ const argv = process.argv.slice(2)
 const commonOptions = {}
 
 const boolValues = {
-  'yes': true,
-  'no': false,
-  'true': true,
-  'false': false,
-  'on': true,
-  'off': true
+  yes: true,
+  no: false,
+  true: true,
+  false: false,
+  on: true,
+  off: true
 }
 
 const aliases = {
-  'w': 'watch',
-  'c': 'config'
+  w: 'watch',
+  c: 'config'
 }
 
 const parseBoolValue = (v: string): boolean | null => boolValues.hasOwnProperty(v) ? boolValues[v] : null
@@ -41,7 +41,7 @@ while (argv.length) {
 
   // keep any remaining arguments to the positional parameters
   if (k === '--') {
-    break;
+    break
   }
 
   if (k.indexOf('-') !== 0) {
@@ -78,7 +78,7 @@ while (argv.length) {
       commonOptions.compress = defaultTo(parseBoolValue(v), true)
       break
     case 'watch':
-      commonOptions.watchMode = v == '' ? true : v
+      commonOptions.watchMode = v === '' ? true : v
       break
   }
 }
