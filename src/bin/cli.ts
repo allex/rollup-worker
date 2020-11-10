@@ -112,7 +112,7 @@ loadConfigFile(configFile)
 
     configs = configs.map(o => ({ ...(o.rollup || o), ...nargs }))
 
-    debug(configs)
+    debug('configs => \n%O', configs)
 
     if (configs.some(o => o.entry)) {
       configs = configs[0]

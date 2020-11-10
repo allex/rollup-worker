@@ -31,6 +31,7 @@ const findTsconfig = (
 ) => configLoader.resolve({ cwd, stopDir, files: ['tsconfig.json'] })
 
 // Provide default options for builtin plugins
+
 export const defaultPluginOpts: IPluginOptionsFactory = {
   resolve (o) {
     // For more resolve options see <https://www.npmjs.com/package/resolve>
@@ -90,12 +91,19 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
   },
 
   typescript (o, { input, options, output: { format } }) {
+    // resolve input tsconfig file
     const tsconfig = o.tsconfig || findTsconfig(input)
+
+    // https://www.npmjs.com/package/rollup-plugin-typescript2#plugin-options
     return merge(
       {
         check: true,
         abortOnError: false,
         cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
+        // If true, declaration files will be emitted in the directory given in the
+        // tsconfig. If false, the declaration files will be placed inside the destination
+        // directory given in the Rollup configuration.
+        useTsconfigDeclarationDir: false,
         tsconfigDefaults: {
           compilerOptions: {
             sourceMap: options.sourcemap,

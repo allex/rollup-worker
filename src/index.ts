@@ -274,7 +274,7 @@ export class Bundler {
     const list = this._normalizeEntry(entry)
     const files = list.map(({ o }) => relativeId(o.file || o.dir))
 
-    debug('normalized rollup entries => \n%O', list)
+    debug('entries (normalized) => \n%O', list)
 
     stderr(chalk.cyan(`build ${chalk.bold(relativeId(entry.input))} \u2192 ${chalk.bold(files.join(', '))} ...`))
 
