@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+### [1.1.1](https://github.com/allex/rollup-worker/compare/1.1.0...1.1.1) (2021-04-22)
+
+
+### Bug Fixes
+
+* vue jsx conflict with react ([821729d](https://github.com/allex/rollup-worker/commit/821729d41f10f204977decd4fe2f579a123d99ef))
+
 ## [1.1.0](https://github.com/allex/rollup-worker/compare/1.1.0-dev.2020102...1.1.0) (2020-10-14)
 
 
