@@ -69,7 +69,7 @@ export default babelPlugin.custom(babelCore => {
       const defaultPlugins = createConfigItems(
         'plugin',
         [
-          {
+          !customOptions.vue && {
             name: '@babel/plugin-transform-react-jsx',
             pragma: customOptions.pragma || 'h',
             pragmaFrag: customOptions.pragmaFrag || 'Fragment'
