@@ -204,7 +204,10 @@ export class Bundler {
       }
 
       // provides some default plugins if list is empty
-      const plugins = mergeArray(defaultTo(input.plugins, zeroConfigPlugins, isEmpty), builtinPlugins, { pk: 'name' })
+      const plugins = mergeArray(
+        defaultTo(input.plugins, zeroConfigPlugins, isEmpty),
+        builtinPlugins,
+        { pk: 'name' })
 
       input.plugins = plugins
         .map(p => createPlugin(p, bundleCtx))
@@ -215,10 +218,11 @@ export class Bundler {
       let { file, minimize } = output
 
       // enable minimize if filename with `*.min.*` pattern, default to true
-      if (minimize !== false) {
+      if (file && minimize !== false) {
         minimize = options.compress !== false
           || /\.min\./.test(basename(file))
       }
+
       if (minimize) {
         // Add compress based on terser, with build signature
         output.plugins.push('minify')
@@ -283,7 +287,7 @@ export class Bundler {
       const bundle: RollupBuild = await rollup.rollup(i)
       const out: RollupOutput = await bundle.write(o)
 
-      stderr(chalk.green(`created ${chalk.bold(relativeId(o.file))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
+      stderr(chalk.green(`created ${chalk.bold(relativeId(o.file || o.dir))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
       return bundle
     })
   }
@@ -293,7 +297,7 @@ export class Bundler {
     return sequence(this.config.entry, o => this.run(o))
   }
 
-  async watch (options) {
+  async watch (options?: any) {
     const watchOptions = []
     const watch = { chokidar: true, ...options }
     await this._init()

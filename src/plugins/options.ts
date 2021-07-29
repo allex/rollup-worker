@@ -7,7 +7,7 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
-import { merge } from '@fdio/utils'
+import { merge, isFunction } from '@fdio/utils'
 import { basename, dirname, extname, relative, resolve } from 'path'
 
 import autoprefixer from 'autoprefixer'
@@ -15,12 +15,18 @@ import cssnano from 'cssnano'
 
 import configLoader from '../utils/configLoader'
 
+import { Kv } from '../../typings/common'
+
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
 
-interface IPluginOptionsFactory {
-  [name: string]: <T extends PluginOptions> (options: T, ctx: RollupContext) => T;
+type RollupContext = {
+  input: Kv;
+  output: Kv;
+  options: Kv;
 }
+
+export type IPluginOptionParser <T = Kv> = (options: Partial<T>, ctx: RollupContext) => T;
 
 const findTsconfig = (
   entryFile: string,
@@ -32,7 +38,7 @@ const findTsconfig = (
 
 // Provide default options for builtin plugins
 
-export const defaultPluginOpts: IPluginOptionsFactory = {
+const defaultPluginOpts: Kv<IPluginOptionParser> = {
   resolve (o) {
     // For more resolve options see <https://www.npmjs.com/package/resolve>
     // pay attention to [module/jsnext/browser/main] orders
@@ -56,6 +62,7 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
   },
 
   // For internal custom babel configs
+  // https://github.com/rollup/plugins/tree/master/packages/babel#options
   babel (o, { input, output, options }) {
     const {
       defines = {}
@@ -67,6 +74,7 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
         extensions: EXTENSIONS,
         exclude: 'node_modules/**',
         passPerPreset: true, // @see https://babeljs.io/docs/en/options#passperpreset
+        babelHelpers: 'bundled',
         custom: {
           defines,
           modern,
@@ -171,4 +179,12 @@ export const defaultPluginOpts: IPluginOptionsFactory = {
       extract: false
     }, o)
   }
+}
+
+export const normalizeWithDefaultOptions = <T> (name: string, o: Partial<T>, context: RollupContext): T => {
+  const func = defaultPluginOpts[name]
+  if (func) {
+    return func(o, context)
+  }
+  return o
 }

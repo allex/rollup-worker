@@ -3,8 +3,7 @@ import dateTime from 'date-time'
 import prettyMs from 'pretty-ms'
 import signalExit from 'signal-exit'
 
-import { Bundler, version } from 'rollup-worker'
-
+import { Bundler, version } from '../index'
 import { relativeId } from '../utils'
 import batchWarnings from '../utils/batchWarnings'
 import { handleError, stderr } from '../utils/logging'
@@ -12,7 +11,9 @@ import { handleError, stderr } from '../utils/logging'
 import alternateScreen from './alternateScreen'
 import { printTimings } from './timings'
 
-function watch (configFile, configs, command, silent = false) {
+function watch (configFile: string, configs: {}, silent = false) {
+  console.log(configFile, configs, silent)
+
   const isTTY = Boolean(process.stderr.isTTY)
 
   const processConfigs = configs => {

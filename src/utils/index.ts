@@ -4,6 +4,8 @@ import mkdirp from 'mkdirp'
 import path from 'path'
 import resolveFrom from 'resolve-from'
 
+import { dependencies } from '../../package.json'
+
 const absolutePath = /^(?:\/|(?:[A-Za-z]:)?[\\|/])/
 function isAbsolute (p) {
   return absolutePath.test(p)
@@ -37,7 +39,7 @@ export const writeFile = (file: string, code: string): Promise<boolean> => {
 }
 
 const isBuiltInPackage = memoize((pkgName: string): boolean => {
-  const deps = require('../package').dependencies
+  const deps = dependencies
   return hasOwn(deps, pkgName)
 })
 

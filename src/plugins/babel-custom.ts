@@ -2,7 +2,7 @@
 
 import { createConfigItem } from '@babel/core'
 import { isEmpty, merge, omit } from '@fdio/utils'
-import babelPlugin from 'rollup-plugin-babel'
+import { createBabelInputPluginFactory } from '@rollup/plugin-babel'
 
 import { resolvePackage } from '../utils'
 
@@ -52,7 +52,7 @@ const createConfigItems = (type, items) => {
   })
 }
 
-export default babelPlugin.custom(babelCore => {
+export default createBabelInputPluginFactory(babelCore => {
   return {
     // Passed the plugin options.
     options ({ custom: customOptions, ...pluginOptions }) {

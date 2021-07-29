@@ -1,21 +1,25 @@
-import { pick } from '@fdio/utils'
 import Debug from 'debug'
 import fs from 'fs'
 import p from 'path'
 
-import { Bundler, loadConfigFile, version } from 'rollup-worker'
+import { Bundler, loadConfigFile, version } from '../index'
 
 import { relativeId } from '../utils'
 import { stderr } from '../utils/logging'
 
 import watch from './watch'
 
+interface CommandOptions {
+  compress?: boolean;
+  watchMode?: boolean;
+}
+
 const debug = Debug('rollup-worker:cli')
 
 let configFile = p.resolve(process.cwd(), '.fssrc.js')
 
 const argv = process.argv.slice(2)
-const commonOptions = {}
+const commandOptions: CommandOptions = {}
 
 const boolValues = {
   yes: true,
@@ -75,10 +79,10 @@ while (argv.length) {
       }
       break
     case 'compress':
-      commonOptions.compress = defaultTo(parseBoolValue(v), true)
+      commandOptions.compress = defaultTo(parseBoolValue(v), true)
       break
     case 'watch':
-      commonOptions.watchMode = v === '' ? true : v
+      commandOptions.watchMode = v === '' ? true : v
       break
   }
 }
@@ -105,7 +109,7 @@ loadConfigFile(configFile)
   .then(configs => {
     const nargs: Kv = {}
 
-    const compress = commonOptions.compress
+    const compress = commandOptions.compress
     if (compress !== undefined) {
       nargs.compress = compress
     }
@@ -118,7 +122,7 @@ loadConfigFile(configFile)
       configs = configs[0]
     }
 
-    if (commonOptions.watchMode) {
+    if (commandOptions.watchMode) {
       watch(configFile, configs)
     } else {
       // build

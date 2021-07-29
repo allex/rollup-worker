@@ -3,9 +3,10 @@ import resolveFrom from 'resolve-from'
 import { Plugin, PluginImpl } from 'rollup'
 
 import { localRequire, relativeId, result } from '../utils'
-import { defaultPluginOpts } from './options'
+import { normalizeWithDefaultOptions } from './options'
 
 import customBabel from './babel-custom'
+import { dependencies } from '../../package.json'
 
 export type PluginStruct = PluginImpl | Plugin
 export type PluginConfig = string | PluginStruct | [string, PluginStruct]
@@ -14,7 +15,7 @@ export type PluginConfig = string | PluginStruct | [string, PluginStruct]
 // For more builtin plugins see package.json#dependencies pattern with `rollup-plugin-xxx`
 const pluginNameAliases = {
   globals: '@allex/rollup-plugin-node-globals',
-  resolve: '@allex/rollup-plugin-node-resolve',
+  resolve: '@rollup/plugin-node-resolve',
   json: 'rollup-plugin-json5',
   typescript: 'rollup-plugin-typescript2',
   minify: 'rollup-plugin-jspacker'
@@ -33,7 +34,7 @@ const pluginNameAliasesReverse = Object.keys(pluginNameAliases)
 // builtin plugin for lazy required
 const isBuiltIn = memoize((name: string): boolean => {
   name = pluginNameAliases[name] || name
-  const deps = require('../package').dependencies
+  const deps = dependencies
   return hasOwn(builtinImpls, name)
     || [name, `rollup-plugin-${name}`, `@rollup/plugin-${name}`].some(k => hasOwn(deps, k))
 })
@@ -94,14 +95,11 @@ export const getPluginCfg = (name: string, ctx?: RollupContext): PluginOptions |
 
   // #2 mixin builtin options if a builtin plugin
   if (isBuiltIn(name)) {
-    const f = defaultPluginOpts[name]
-    if (f) {
-      cfg = f(cfg, ctx)
-    }
+    cfg = normalizeWithDefaultOptions(name, cfg, ctx)
   }
 
   // #3 mixin output localize overrides
-  const override = get(ctx, `output.${name}`)
+  const override = get(ctx, `output.plugins.${name}`)
   if (override) {
     merge(cfg, override)
   }
