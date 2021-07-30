@@ -143,10 +143,12 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
   },
 
   replace (o) {
-    return {
-      NODE_ENV: process.env.NODE_ENV || 'production',
-      ...o
-    }
+    return merge({
+      preventAssignment: true,
+      values: {
+        NODE_ENV: process.env.NODE_ENV || 'production',
+      }
+    }, o)
   },
 
   minify (o, { output: { format } }) {

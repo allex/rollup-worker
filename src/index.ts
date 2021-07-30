@@ -183,12 +183,17 @@ export class Bundler {
 
       const input = { ...baseInput }
 
+      // extract some extends option properties
+      const {
+        compress,
+        ...output
+      } = chunk
+
       // merge with builtin and common options
-      const output = {
+      Object.assign(output, {
         globals,
         indent: '  ',
-        ...chunk
-      }
+      })
 
       // resolve output file with base dir
       if (output.file) {
@@ -215,15 +220,23 @@ export class Bundler {
 
       output.plugins = (output.plugins || [])
 
-      let { file, minimize } = output
+      // default to compress (except as configure this option explicitly)
+      let enableCompress = options.compress !== false
 
-      // enable minimize if filename with `*.min.*` pattern, default to true
-      if (file && minimize !== false) {
-        minimize = options.compress !== false
-          || /\.min\./.test(basename(file))
+      const { file } = output
+      if (file) {
+        // enable minimize by the default
+        if (compress !== undefined) {
+          enableCompress = !!compress
+        } else {
+          // enable minimize when out file suffixed `*.min.*` pattern
+          enableCompress = options.compress == null
+            ? /\.min\./.test(basename(file))
+            : enableCompress
+        }
       }
 
-      if (minimize) {
+      if (enableCompress) {
         // Add compress based on terser, with build signature
         output.plugins.push('minify')
       }
