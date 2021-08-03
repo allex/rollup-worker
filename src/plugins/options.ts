@@ -116,7 +116,9 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
           compilerOptions: {
             sourceMap: options.sourcemap,
             jsx: 'react',
-            declaration: true
+            declaration: true,
+            // tsc@4.3 defaults to true, https://www.typescriptlang.org/tsconfig#useDefineForClassFields
+            useDefineForClassFields: false
           }
         },
         // some ts options to been force overwrite
