@@ -9,6 +9,11 @@ function isAbsolute (p) {
   return absolutePath.test(p)
 }
 
+export const uniq = <T> (list: T[]): T[] => list.reduce((p, o) => {
+  if (!~p.indexOf(o)) p.push(o)
+  return p
+}, [] as T[])
+
 export function relativeId (id) {
   if (typeof process === 'undefined' || !isAbsolute(id)) { return id }
   return path.relative(process.cwd(), id)

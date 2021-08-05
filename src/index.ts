@@ -185,6 +185,7 @@ export class Bundler {
         throw new Error('target output format required.')
       }
 
+      const modern = format === 'modern'
       const input = { ...baseInput }
 
       // extract some extends option properties
@@ -285,7 +286,8 @@ export class Bundler {
           external
         },
         o: {
-          ...output
+          ...output,
+          format: modern ? 'es' : format
         }
       }
     })

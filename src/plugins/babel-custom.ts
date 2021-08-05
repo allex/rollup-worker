@@ -1,29 +1,24 @@
-/* eslint-disable no-unused-vars */
-
-import { createConfigItem } from '@babel/core'
-import { isEmpty, merge, omit } from '@fdio/utils'
+import { isEmpty, merge } from '@fdio/utils'
 import { createBabelInputPluginFactory } from '@rollup/plugin-babel'
+import transformFastRest from './transform-fast-rest'
 
 import { resolveModule } from '../utils'
 
-const isTruthy = isEmpty
-
-const uniq = <T> (list: T[]): T[] => list.reduce((p, o) => {
-  if (!~p.indexOf(o)) p.push(o)
-  return p
-}, [] as T[])
+const isTruthy = v => !isEmpty(v)
 
 const ESMODULES_TARGET = {
   esmodules: true
 }
 
-const mergeConfigItems = (type, ...configItemsToMerge) => {
+const mergeConfigItems = (babel, type, ...configItemsToMerge) => {
   const mergedItems = []
 
   configItemsToMerge.forEach(configItemToMerge => {
     configItemToMerge.forEach(item => {
       const itemToMergeWithIndex = mergedItems.findIndex(
-        mergedItem => mergedItem.file.resolved === item.file.resolved
+        mergedItem =>
+          (mergedItem.name || mergedItem.file.resolved) ===
+          (item.name || item.file.resolved)
       )
 
       if (itemToMergeWithIndex === -1) {
@@ -31,7 +26,7 @@ const mergeConfigItems = (type, ...configItemsToMerge) => {
         return
       }
 
-      mergedItems[itemToMergeWithIndex] = createConfigItem(
+      mergedItems[itemToMergeWithIndex] = babel.createConfigItem(
         [
           mergedItems[itemToMergeWithIndex].file.resolved,
           merge(mergedItems[itemToMergeWithIndex].options, item.options)
@@ -46,134 +41,181 @@ const mergeConfigItems = (type, ...configItemsToMerge) => {
   return mergedItems
 }
 
-const createConfigItems = (type, items) => {
-  return items.map(({ name, ...options }) => {
-    return createConfigItem([resolveModule(name), options], { type })
+const createConfigItems = (babel, type, items) => {
+  return items.map(item => {
+    let { name, value, ...options } = item
+    value = value || [resolveModule(name), options]
+    return babel.createConfigItem(value, { type })
   })
 }
 
-export default createBabelInputPluginFactory(babelCore => {
-  return {
-    // Passed the plugin options.
-    options ({ custom: customOptions, ...pluginOptions }) {
-      return {
-        // Pull out any custom options that the plugin might have.
-        customOptions,
+const environmentPreset = '@babel/preset-env'
+// capture both @babel/env & @babel/preset-env (https://babeljs.io/docs/en/presets#preset-shorthand)
+const presetEnvRegex = new RegExp(/@babel\/(preset-)?env/)
 
-        // Pass the options back with the two custom options removed.
-        pluginOptions
-      }
-    },
+export default () => {
+  return createBabelInputPluginFactory(babelCore => {
+    return {
+      // Passed the plugin options.
+      options({ custom: customOptions, ...pluginOptions }) {
+        return {
+          // Pull out any custom options that the plugin might have.
+          customOptions,
 
-    config (config, { code, customOptions }) {
-      const defaultPlugins = createConfigItems(
-        'plugin',
-        [
-          !customOptions.vue && {
-            name: '@babel/plugin-transform-react-jsx',
-            pragma: customOptions.pragma || 'h',
-            pragmaFrag: customOptions.pragmaFrag || 'Fragment'
-          },
-          !customOptions.typescript && {
-            name: '@babel/plugin-transform-flow-strip-types'
-          },
-          isTruthy(customOptions.defines) && {
-            name: 'babel-plugin-transform-replace-expressions',
-            replace: customOptions.defines
-          },
-          !customOptions.modern && {
-            name: 'babel-plugin-transform-async-to-promises',
-            inlineHelpers: true,
-            externalHelpers: true
-          },
-          {
-            name: '@babel/plugin-proposal-class-properties',
-            loose: true
-          },
-          !customOptions.modern && {
-            name: '@babel/plugin-transform-regenerator',
-            async: false
-          },
-          {
-            name: 'babel-plugin-macros'
-          }
-        ].filter(Boolean)
-      )
+          // Pass the options back with the two custom options removed.
+          pluginOptions
+        }
+      },
 
-      const babelOptions = config.options || {}
+      config (config, { customOptions }) {
+        const targets = customOptions.targets
+        const isNodeTarget = targets?.node != null
 
-      const envIdx = (babelOptions.presets || []).findIndex(preset =>
-        preset.file.request.includes('@babel/preset-env')
-      )
-
-      // wrapper for babel preset-env with some builtin features
-      if (envIdx !== -1) {
-        const preset = babelOptions.presets[envIdx]
-        babelOptions.presets[envIdx] = createConfigItem(
+        const defaultPlugins = createConfigItems(
+          babelCore,
+          'plugin',
           [
-            preset.file.resolved,
-            Object.assign(
-              merge(
-                {
-                  loose: true,
-                  useBuiltIns: false,
-                  targets: customOptions.targets
-                },
-                omit(preset.options, 'exclude'),
-                {
-                  modules: false,
-                  exclude: uniq(['transform-async-to-generator', 'transform-regenerator', ...(preset.options.exclude || [])])
-                }
-              ),
-              customOptions.modern ? { targets: ESMODULES_TARGET } : {}
-            )
-          ],
-          {
-            type: `preset`
-          }
-        )
-      } else {
-        // merge presets with preset-env
-        babelOptions.presets = [
-          ...createConfigItems('preset', [
             {
-              name: '@babel/preset-env',
-              targets: customOptions.modern
-                ? ESMODULES_TARGET
-                : customOptions.targets,
-              modules: false,
-              loose: true,
-              useBuiltIns: false,
-              exclude: ['transform-async-to-generator', 'transform-regenerator']
+              name: '@babel/plugin-syntax-import-meta'
+            },
+            !customOptions.jsxImportSource && !customOptions.vue && {
+              name: '@babel/plugin-transform-react-jsx',
+              pragma: customOptions.pragma || 'h',
+              pragmaFrag: customOptions.pragmaFrag || 'Fragment'
+            },
+            !customOptions.typescript && {
+              name: '@babel/plugin-transform-flow-strip-types'
+            },
+            isTruthy(customOptions.defines) && {
+              name: 'babel-plugin-transform-replace-expressions',
+              replace: customOptions.defines
+            },
+            !customOptions.modern &&
+              !isNodeTarget && {
+                name: 'babel-plugin-transform-async-to-promises',
+                inlineHelpers: true,
+                externalHelpers: false,
+                minify: true
+              },
+            !customOptions.modern &&
+              !isNodeTarget && {
+                value: [
+                  transformFastRest,
+                  {
+                    // Use inline [].slice.call(arguments)
+                    helper: false,
+                    literal: true
+                  },
+                  'transform-fast-rest'
+                ]
+              },
+            {
+              name: '@babel/plugin-proposal-class-properties',
+              loose: true
+            },
+            !customOptions.modern &&
+              !isNodeTarget && {
+                name: '@babel/plugin-transform-regenerator',
+                async: false
+              },
+            {
+              name: 'babel-plugin-macros'
             }
-          ]),
-          ...(babelOptions.presets || [])
-        ]
-      }
-
-      if (customOptions.vue) {
-        babelOptions.presets.push(
-          ...createConfigItems('presets', [
-            { name: '@vue/babel-preset-jsx' }
-          ])
+          ].filter(Boolean)
         )
+
+        const babelOptions = config.options || {}
+
+        const envIdx = (babelOptions.presets || []).findIndex(preset =>
+          presetEnvRegex.test(preset.file.request)
+        )
+
+        // wrapper for babel preset-env with some builtin features
+        if (envIdx !== -1) {
+          const preset = babelOptions.presets[envIdx]
+          babelOptions.presets[envIdx] = babelCore.createConfigItem(
+            [
+              resolveModule(environmentPreset),
+              Object.assign(
+                merge(
+                  {
+                    loose: true,
+                    useBuiltIns: false,
+                    targets: customOptions.targets
+                  },
+                  preset.options,
+                  {
+                    bugfixes: customOptions.modern,
+                    modules: false,
+                    exclude: merge(
+                      ['transform-async-to-generator', 'transform-regenerator'],
+                      preset.options?.exclude || []
+                    )
+                  }
+                ),
+                customOptions.modern ? { targets: ESMODULES_TARGET } : {}
+              )
+            ],
+            {
+              type: `preset`
+            }
+          )
+        } else {
+          babelOptions.presets = createConfigItems(
+            babelCore,
+            'preset',
+            [
+              {
+                name: environmentPreset,
+                targets: customOptions.modern
+                  ? ESMODULES_TARGET
+                  : customOptions.targets,
+                modules: false,
+                loose: true,
+                useBuiltIns: false,
+                bugfixes: customOptions.modern,
+                exclude: ['transform-async-to-generator', 'transform-regenerator']
+              },
+              customOptions.jsxImportSource && {
+                name: '@babel/preset-react',
+                runtime: 'automatic',
+                importSource: customOptions.jsxImportSource
+              }
+            ].filter(Boolean)
+          )
+        }
+
+        if (customOptions.vue) {
+          babelOptions.presets.push(
+            ...createConfigItems(
+              babelCore,
+              'presets',
+              [
+                { name: '@vue/babel-preset-jsx' }
+              ]
+            )
+          )
+        }
+
+        // Merge babelrc & our plugins together
+        babelOptions.plugins = mergeConfigItems(
+          babelCore,
+          'plugin',
+          defaultPlugins,
+          babelOptions.plugins || []
+        )
+
+        // @see https://babeljs.io/docs/en/options#generatoropts
+        if (customOptions.compress) {
+          babelOptions.generatorOpts = {
+            minified: true,
+            compact: true,
+            shouldPrintComment: comment => /[@#]__[A-Z]+__/.test(comment)
+          }
+        }
+
+        return babelOptions
       }
-
-      // Merge babelrc & our plugins together
-      babelOptions.plugins = mergeConfigItems(
-        'plugin',
-        defaultPlugins,
-        babelOptions.plugins || []
-      )
-
-      // @see https://babeljs.io/docs/en/options#generatoropts
-      babelOptions.generatorOpts = {
-        minified: customOptions.compress,
-        compact: customOptions.compress,
-        shouldPrintComment: comment => /[@#]__PURE__/.test(comment)
-      }
-
-      return babelOptions
     }
-  }
-})
+  })
+}

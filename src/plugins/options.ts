@@ -7,15 +7,13 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
-import { merge, isFunction } from '@fdio/utils'
-import { basename, dirname, extname, relative, resolve } from 'path'
+import { merge } from '@fdio/utils'
+import { dirname, extname, resolve } from 'path'
 
 import autoprefixer from 'autoprefixer'
 import cssnano from 'cssnano'
 
 import configLoader from '../utils/configLoader'
-
-import { Kv } from '../../typings/common'
 
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
@@ -33,7 +31,7 @@ const findTsconfig = (
   {
     cwd = dirname(entryFile),
     stopDir = process.cwd()
-  }: { cwd?: string; stopDir: string; } = {}
+  }: Dictionary<'cwd' | 'stopDir', string> = {}
 ) => configLoader.resolve({ cwd, stopDir, files: ['tsconfig.json'] })
 
 // Provide default options for builtin plugins
@@ -86,6 +84,7 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
           pragma: options.jsx || 'h',
           pragmaFrag: options.jsxFragment || 'Fragment',
           typescript: !!useTypescript,
+          jsxImportSource: options.jsxImportSource || false,
           vue: !!options.vue,
           react: !!options.react
         }
@@ -150,25 +149,29 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
     return merge({
       preventAssignment: true,
       values: {
-        NODE_ENV: process.env.NODE_ENV || 'production',
+        NODE_ENV: process.env.NODE_ENV || 'production'
       }
     }, o)
   },
 
   minify (o, { output: { format } }) {
+    const modern = format === 'modern'
     // options for rollup-plugin-terser <https://github.com/terser/terser>
-    return merge({
-      module: true,
-      ie8: true,
-      toplevel: format === 'cjs' || format === 'es',
-      compress: {
-        drop_console: !(format === 'cjs' || format === 'es')
-      },
-      output: {
-        indent_level: 2
-      },
-      signature: true
-    }, o)
+    return merge(
+      {
+        ie8: true,
+        compress: {
+          drop_console: !(format === 'cjs' || format === 'es')
+        },
+        output: {
+          indent_level: 2
+        },
+        signature: true,
+        module: modern || format === 'cjs' || format === 'es',
+        ecma: modern ? 2017 : 5,
+        toplevel: modern || format === 'cjs' || format === 'es'
+      }, o
+    )
   },
 
   postcss (o, { options }) {
@@ -187,7 +190,7 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
   }
 }
 
-export const normalizeWithDefaultOptions = <T> (name: string, o: Partial<T>, context: RollupContext): T => {
+export const normalizeWithDefaultOptions = <T> (name: string, o: T, context: RollupContext): T => {
   const func = defaultPluginOpts[name]
   if (func) {
     return func(o, context)

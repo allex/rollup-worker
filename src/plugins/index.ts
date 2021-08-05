@@ -16,7 +16,7 @@ interface PluginDefine {
 
 const plugins: Kv<PluginDefine> = {
   babel: {
-    impl: () => customBabel
+    impl: () => customBabel()
   },
   globals: {
     impl: () => loadModule('@allex/rollup-plugin-node-globals')
