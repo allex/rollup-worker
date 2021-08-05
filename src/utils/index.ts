@@ -1,12 +1,10 @@
-import { hasOwn, memoize } from '@fdio/utils'
 import fs from 'fs'
 import mkdirp from 'mkdirp'
 import path from 'path'
 import resolveFrom from 'resolve-from'
 
-import { dependencies } from '../../package.json'
-
 const absolutePath = /^(?:\/|(?:[A-Za-z]:)?[\\|/])/
+
 function isAbsolute (p) {
   return absolutePath.test(p)
 }
@@ -38,27 +36,24 @@ export const writeFile = (file: string, code: string): Promise<boolean> => {
   })
 }
 
-const isBuiltInPackage = memoize((pkgName: string): boolean => {
-  const deps = dependencies
-  return hasOwn(deps, pkgName)
-})
+export const resolveModule = (moduleName: string, paths?: string[]): string => {
+  let modulePath: string = ''
+  paths = paths || [process.cwd(), __dirname]
+  for (const path of paths) {
+    try {
+      if ((modulePath = resolveFrom(path, moduleName))) {
+        return modulePath
+      }
+    } catch (e) {}
+  }
+  return modulePath
+}
 
-export const resolvePackage = memoize((
-  pkgName: string,
-  { cwd = process.cwd() }: { cwd?: string } = {}
-): string => {
-  cwd = cwd || process.cwd()
-  return isBuiltInPackage(pkgName)
-    ? require.resolve(pkgName)
-    : resolveFrom.silent(cwd, pkgName) || require.resolve(pkgName)
-})
-
-export const localRequire = (
-  name: string,
-  { cwd = process.cwd(), silent }: { silent?: boolean; cwd?: string } = {}
-) => {
-  const resolved = silent
-    ? resolveFrom.silent(cwd, name)
-    : resolveFrom(cwd, name)
-  return resolved && require(resolved)
+export const loadModule = <T = any> (moduleName: string, paths?: string[]): T => {
+  paths = paths || [process.cwd(), __dirname]
+  const p = resolveModule(moduleName, paths)
+  if (!p) {
+    throw new Error(`Resolve module ${moduleName} failed in paths: ${paths.join(',')}`)
+  }
+  return require(p) as T
 }

@@ -1,102 +1,85 @@
-import { get, hasOwn, isArray, isFunction, isString, memoize, merge } from '@fdio/utils'
-import resolveFrom from 'resolve-from'
+import { get, hasOwn, isArray, isFunction, isString, merge } from '@fdio/utils'
 import { Plugin, PluginImpl } from 'rollup'
 
-import { localRequire, relativeId, result } from '../utils'
+import { loadModule, result } from '../utils'
 import { normalizeWithDefaultOptions } from './options'
 
 import customBabel from './babel-custom'
-import { dependencies } from '../../package.json'
 
 export type PluginStruct = PluginImpl | Plugin
 export type PluginConfig = string | PluginStruct | [string, PluginStruct]
 
-// defs builtin plugins alias
-// For more builtin plugins see package.json#dependencies pattern with `rollup-plugin-xxx`
-const pluginNameAliases = {
-  globals: '@allex/rollup-plugin-node-globals',
-  resolve: '@rollup/plugin-node-resolve',
-  json: 'rollup-plugin-json5',
-  typescript: 'rollup-plugin-typescript2',
-  minify: 'rollup-plugin-jspacker'
+interface PluginDefine {
+  name?: string;
+  impl: () => PluginImpl;
 }
 
-const builtinImpls = {
-  babel: customBabel
+const plugins: Kv<PluginDefine> = {
+  babel: {
+    impl: () => customBabel
+  },
+  globals: {
+    impl: () => loadModule('@allex/rollup-plugin-node-globals')
+  },
+  minify: {
+    impl: () => loadModule('rollup-plugin-jspacker')
+  },
+  resolve: {
+    impl: () => loadModule('@rollup/plugin-node-resolve').nodeResolve
+  },
+  json: {
+    impl: () => loadModule('rollup-plugin-json5')
+  },
+  typescript: {
+    impl: () => loadModule('rollup-plugin-typescript2')
+  }
 }
 
-const isRollupPluginCtor = o =>
+const isRollupPluginDefine = o =>
   typeof o === 'function' && !(['resolveId', 'transform', 'load', 'renderChunk'].some(k => !!o[k]))
 
-const pluginNameAliasesReverse = Object.keys(pluginNameAliases)
-  .reduce((o, k) => (o[pluginNameAliases[k]] = k, o), {})
-
-// builtin plugin for lazy required
-const isBuiltIn = memoize((name: string): boolean => {
-  name = pluginNameAliases[name] || name
-  const deps = dependencies
-  return hasOwn(builtinImpls, name)
-    || [name, `rollup-plugin-${name}`, `@rollup/plugin-${name}`].some(k => hasOwn(deps, k))
-})
-
-const importPlugin = (name: string, pkgName?: string): PluginImpl | null => {
-  if (!pkgName && hasOwn(pluginNameAliases, name)) {
-    pkgName = pluginNameAliases[name]
-  }
-
+const importPlugin = (name: string): PluginImpl | null => {
   let p: PluginImpl
-  const tryNames = pkgName ? [pkgName] : [`rollup-plugin-${name}`, `@rollup/plugin-${name}`]
+  const tryNames: string[] = /\bplugin-/.test(name)
+    ? [name]
+    : [`rollup-plugin-${name}`, `@rollup/plugin-${name}`]
+
   for (let i = -1, l = tryNames.length, n; ++i < l;) {
     n = tryNames[i]
     try {
-      p = isBuiltIn(name)
-        ? require(n)
-        : localRequire(n)
+      p = loadModule(n)
       break
     } catch (e) {
       if (i === l) { throw e }
     }
   }
 
-  // hack some plugin with named exports, eg: terser, minify
-  if (!isFunction(p) && isFunction(p[name])) {
-    return p[name]
-  }
-
   return p
 }
 
 export const loadPlugin = <T> (name: string): T | null => {
-  return hasOwn(builtinImpls, name)
-    ? builtinImpls[name]
+  const plugin = hasOwn(plugins, name)
+    ? plugins[name]!.impl()
     : importPlugin(name)
-}
 
-const requireCache = require.cache
-export const getPluginRefName = (p: PluginImpl): string => {
-  const f = Object.keys(requireCache).find(k => requireCache[k].exports === p)
-  if (f) {
-    return [/(?:@[\w-]+)?\/rollup-plugin-([^/]+)/, /@rollup\/plugin-([^/]+)/].reduce((r, reg) => {
-      if (r) return r
-      const pkgName = reg.exec(f.substring(0, f.lastIndexOf('/'))) && RegExp.lastMatch
-      // resolve aliased plugin name
-      r = pluginNameAliasesReverse[pkgName] || RegExp.$1
-      return r
-    }, '')
+  if (!plugin) {
+    throw new Error(`Cannot find plugin module '${name}`)
   }
-  return ''
+
+  // hack some plugin with named exports, eg: terser, minify
+  if (!isFunction(plugin) && isFunction(plugin[name])) {
+    return plugin[name]
+  }
+
+  return plugin
 }
 
-export const getPluginCfg = (name: string, ctx?: RollupContext): PluginOptions | null => {
-  if (!name) return null
-
+export const getPluginCfg = (name: string, ctx?: RollupContext): PluginOptions => {
   // #1 evaluate project localize settings
   let cfg = result(get(ctx, `options.plugins.${name}`, {}), ctx)
 
   // #2 mixin builtin options if a builtin plugin
-  if (isBuiltIn(name)) {
-    cfg = normalizeWithDefaultOptions(name, cfg, ctx)
-  }
+  cfg = normalizeWithDefaultOptions(name, cfg, ctx)
 
   // #3 mixin output localize overrides
   const override = get(ctx, `output.plugins.${name}`)
@@ -110,25 +93,26 @@ export const getPluginCfg = (name: string, ctx?: RollupContext): PluginOptions |
 /**
  * Get plugin constructor by name
  */
-export const getPluginCtor = (p: PluginConfig, cfg?: PluginOptions | null): PluginStruct => {
+export const getPluginCtor = (p: PluginConfig, cfg?: Partial<PluginOptions>): PluginStruct => {
   p = (
     isString(p)
-      ? loadPlugin<PluginImpl>(p)
+      ? loadPlugin<PluginImpl>(p as string)
       : p
   ) as PluginStruct
-  if (cfg && isRollupPluginCtor(p)) {
+  if (cfg && isRollupPluginDefine(p)) {
     return (options: PluginOptions): Plugin => (p as PluginImpl)(merge({}, cfg, options))
   }
+
   return p
 }
 
 /**
  * Construct plugin by name (with rollup options)
  */
-export const createPlugin = (p: PluginConfig, ctx?: RollupContext): Plugin => {
+export const buildPlugin = (p: PluginConfig, ctx?: RollupContext): Plugin => {
   let name: string = ''
   if (isString(p)) {
-    name = p
+    name = p as string
     p = null
   } else if (isArray(p)) {
     [ name, p ] = p // [ name, constructor ]

@@ -42,17 +42,19 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
   resolve (o) {
     // For more resolve options see <https://www.npmjs.com/package/resolve>
     // pay attention to [module/jsnext/browser/main] orders
-    return {
-      jsnext: true,
-      module: true,
-      browser: true,
-      main: true,
-      // prefer local modules for browser
-      preferBuiltins: false,
-      customResolveOptions: {
-        paths: [resolve(process.cwd(), 'node_modules')]
-      },
-      ...o }
+    return merge(
+      {
+        jsnext: true,
+        module: true,
+        browser: true,
+        main: true,
+        // prefer local modules for browser
+        preferBuiltins: false,
+        moduleDirectories: [
+          resolve(process.cwd(), 'node_modules')
+        ]
+      }, o
+    )
   },
 
   json (o) {

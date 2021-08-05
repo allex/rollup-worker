@@ -2,30 +2,23 @@ import fs from 'fs'
 import p from 'path'
 import { promisify } from 'util'
 
-interface ConfigLoaderOptions<T> {
+interface ConfigLoaderOptions<T = any> {
   files?: string[];
   cwd?: string;
   stopDir?: string;
   packageKey?: string;
-  parseJSON?: (o: string) => any;
+  parseJSON?: (o: string) => T;
 }
 
-interface ILoader {
+interface ILoader<T = any> {
   name: string;
   test?: RegExp;
-  load (): Promise<any>;
+  load (path: string): Promise<T>;
 }
 
 // async read file
 // @returns {Promise<T>}
 const readFile = promisify(fs.readFile)
-
-// check if a file exists (async)
-// @returns {Promise<T>}
-// eslint-disable-next-line no-unused-vars
-const pathExists = (p: string): Promise<boolean> => new Promise<boolean>(resolve => {
-  fs.access(p, err => resolve(!err))
-})
 
 // check if a file exists (sync)
 const pathExistsSync = fs.existsSync
@@ -37,7 +30,7 @@ export class ConfigLoader {
   existsCache = new Map<string, boolean>()
 
   // cache loader for localize transform
-  loaders = new Set<ILoader>()
+  loaders = new Set<ILoader<any>>()
 
   /**
    * We need to read package json data in `.resolve` method to check if `packageKey` exists in the file

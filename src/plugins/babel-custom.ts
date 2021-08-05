@@ -4,7 +4,7 @@ import { createConfigItem } from '@babel/core'
 import { isEmpty, merge, omit } from '@fdio/utils'
 import { createBabelInputPluginFactory } from '@rollup/plugin-babel'
 
-import { resolvePackage } from '../utils'
+import { resolveModule } from '../utils'
 
 const isTruthy = isEmpty
 
@@ -48,7 +48,7 @@ const mergeConfigItems = (type, ...configItemsToMerge) => {
 
 const createConfigItems = (type, items) => {
   return items.map(({ name, ...options }) => {
-    return createConfigItem([resolvePackage(name), options], { type })
+    return createConfigItem([resolveModule(name), options], { type })
   })
 }
 

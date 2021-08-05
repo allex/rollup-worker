@@ -1,1 +1,2 @@
-interface Kv<T = any> { [index: string]: T }
+interface Kv<T = any> { [index: string | symbol ]: T }
+

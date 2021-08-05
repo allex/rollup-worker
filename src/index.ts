@@ -18,7 +18,7 @@ import {
   defaultTo, find, isArray, isEmpty, isFunction, omit, sequence
 } from '@fdio/utils'
 
-import { createPlugin } from './plugins'
+import { buildPlugin } from './plugins'
 import { mergeArray, relativeId } from './utils'
 import { stderr } from './utils/logging'
 
@@ -147,11 +147,15 @@ export class Bundler {
   }
 
   _checkExternal (id: string, input: InputOptions) {
-    const dependencies = input.dependencies || this.config.dependencies || []
-    if (!isArray(dependencies)) {
-      return !!dependencies[id]
+    const targets = input.dependencies || this.config.dependencies || []
+    const list = isArray(targets) ? targets : Object.keys(targets).filter(k => targets[k] !== false)
+    for (const item of list) {
+      // pattern match by word and suffix checks
+      if (id === item || id.startsWith(item)) {
+        return true
+      }
     }
-    return dependencies.length ? ~dependencies.indexOf(id) : false
+    return false
   }
 
   /**
@@ -215,7 +219,7 @@ export class Bundler {
         { pk: 'name' })
 
       input.plugins = plugins
-        .map(p => createPlugin(p, bundleCtx))
+        .map(p => buildPlugin(p, bundleCtx))
         .filter(Boolean)
 
       output.plugins = (output.plugins || [])
@@ -250,7 +254,7 @@ export class Bundler {
           }
           return arr
         }, [])
-        .map(p => createPlugin(p, bundleCtx))
+        .map(p => buildPlugin(p, bundleCtx))
         .filter(Boolean)
 
       // external(importee, importer);
