@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+### [2.0.1](https://github.com/allex/rollup-worker/compare/2.0.0...2.0.1) (2021-08-07)
+
+
+### Features
+
+* add transform-fast-rest plugin and fix presets opts deep merge issues ([fe0d959](https://github.com/allex/rollup-worker/commit/fe0d9594002d1176e38b6d084a0d9630327c9905))
+
+
+### Bug Fixes
+
+* refactor plugins and bump node-resolve issues ([b259b85](https://github.com/allex/rollup-worker/commit/b259b8562b471e7c0d89852147bc45ecdae22f93))
+
 ## [2.0.0](https://github.com/allex/rollup-worker/compare/1.1.1...2.0.0) (2021-08-04)
 
 

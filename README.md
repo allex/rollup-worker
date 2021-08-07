@@ -89,7 +89,7 @@ module.exports = {
       input: './src/app/main.ts',
       plugins,
       output: [
-        { format: 'iife', minimize: true, file: 'app/main.js', banner }
+        { format: 'iife', compress: true, file: 'app/main.js', banner }
       ]
     }
   ]

@@ -1,6 +1,6 @@
 {
   "name": "rollup-worker",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
   "main": "lib/rollup-worker.js",
   "module": "lib/rollup-worker.es.js",
@@ -24,8 +24,7 @@
     "lint:fix": "tslint --project . --fix && standard \"src/*.js\" --fix",
     "build": "rb -c && chmod a+x bin/cli.js",
     "watch": "export NODE_ENV='development' && rb -c -w",
-    "test": "npm run lint",
-    "prepare": "npm test && npm run build"
+    "test": "npm run lint"
   },
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",
@@ -34,6 +33,7 @@
     "@allex/rollup-plugin-node-globals": "^0.0.2",
     "@babel/core": "^7.5.5",
     "@babel/plugin-proposal-class-properties": "7.5.5",
+    "@babel/plugin-syntax-import-meta": "^7.10.4",
     "@babel/plugin-syntax-jsx": "^7.2.0",
     "@babel/plugin-transform-flow-strip-types": "^7.4.4",
     "@babel/plugin-transform-react-jsx": "^7.3.0",
