@@ -233,16 +233,14 @@ export class Bundler {
         // enable minimize by the default
         if (compress !== undefined) {
           enableCompress = !!compress
-        } else {
+        } else if (/\.min\./.test(basename(file))) {
           // enable minimize when out file suffixed `*.min.*` pattern
-          enableCompress = options.compress == null
-            ? /\.min\./.test(basename(file))
-            : enableCompress
+          enableCompress = true
         }
       }
 
+      // Add compress based on terser
       if (enableCompress) {
-        // Add compress based on terser, with build signature
         output.plugins.push('minify')
       }
 

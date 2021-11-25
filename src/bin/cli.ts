@@ -32,7 +32,8 @@ const boolValues = {
 
 const aliases = {
   w: 'watch',
-  c: 'config'
+  c: 'config',
+  v: 'version'
 }
 
 const parseBoolValue = (v: string): boolean | null => boolValues.hasOwnProperty(v) ? boolValues[v] : null
