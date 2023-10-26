@@ -223,6 +223,8 @@ export class Bundler {
         .map(p => buildPlugin(p, bundleCtx))
         .filter(Boolean)
 
+      debug('input: ', input)
+
       output.plugins = (output.plugins || [])
 
       // default to compress (except as configure this option explicitly)
@@ -255,6 +257,8 @@ export class Bundler {
         }, [])
         .map(p => buildPlugin(p, bundleCtx))
         .filter(Boolean)
+
+      debug('output: ', output)
 
       // external(importee, importer);
       const defaultExternalFn = (id: string, checkDependency: boolean) => {
