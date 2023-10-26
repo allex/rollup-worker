@@ -5,7 +5,7 @@ import p from 'path'
 import { Bundler, loadConfigFile, version } from '../index'
 
 import { relativeId } from '../utils'
-import { stderr } from '../utils/logging'
+import { handleError, stderr } from '../utils/logging'
 
 import watch from './watch'
 
@@ -130,16 +130,6 @@ loadConfigFile(configFile)
       return build(configs)
     }
   })
-  .catch(e => fatal(e))
-
-function fatal (err) {
-  let msg = err
-  if (err instanceof Error) {
-    msg = `ERROR: ${err.message}`
-    msg += `${msg[msg.length - 1] === '\n' ? '' : '\n'}${err.stack.trimStart('\n')}`
-  }
-  stderr(msg)
-  process.exit(1)
-}
+  .catch(e => handleError(e, true))
 
 export { build, watch }

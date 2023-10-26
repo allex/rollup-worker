@@ -1,12 +1,13 @@
-import tc from 'chalk'
 import prettyBytes from 'pretty-bytes'
+import { SerializedTimings } from 'rollup'
 
-export function printTimings (timings) {
-  Object.keys(timings).forEach(label => {
-    const color =
-      label[0] === '#' ? (label[1] !== '#' ? tc.underline : tc.bold) : text => text
-    const [time, memory, total] = timings[label]
-    const row: any = `${label}: ${time.toFixed(0)}ms, ${prettyBytes(memory)} / ${prettyBytes(total)}`
-    console.info(color(row)) // eslint-disable-line no-console
+import { bold, underline } from '../utils/colors'
+
+export function printTimings (timings: SerializedTimings): void {
+  Object.entries(timings).forEach(([label, [time, memory, total]]) => {
+    const appliedColor =
+      label[0] === '#' ? (label[1] !== '#' ? underline : bold) : (text: string) => text
+    const row = `${label}: ${time.toFixed(0)}ms, ${prettyBytes(memory)} / ${prettyBytes(total)}`
+    console.info(appliedColor(row))
   })
 }

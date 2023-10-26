@@ -31,7 +31,7 @@ const plugins: Kv<PluginDefine> = {
     impl: () => loadModule('rollup-plugin-json5')
   },
   typescript: {
-    impl: () => loadModule('rollup-plugin-typescript2')
+    impl: () => loadModule('@rollup/plugin-typescript')
   }
 }
 
@@ -66,7 +66,7 @@ export const loadPlugin = <T> (name: string): T | null => {
     throw new Error(`Cannot find plugin module '${name}`)
   }
 
-  // hack some plugin with named exports, eg: terser, minify
+  // hack some plugin with named exports, { [pluginName]: () => {} }
   if (!isFunction(plugin) && isFunction(plugin[name])) {
     return plugin[name]
   }

@@ -1,12 +1,12 @@
-import tc from 'chalk'
 import path from 'path'
-import rollup from 'rollup'
+import rollup, { InputOptions, RollupBuild, RollupOutput } from 'rollup'
 
 import { relativeId } from './utils'
 import batchWarnings from './utils/batchWarnings'
 import { handleError, stderr } from './utils/logging'
 
 import { getPluginCtor } from './plugins'
+import { bold } from './utils/colors'
 
 const json = getPluginCtor('json')
 
@@ -29,7 +29,7 @@ export function loadConfigFile (
     })
     .then((bundle: RollupBuild) => {
       if (!silent && warnings.count > 0) {
-        stderr(tc.bold(`loaded ${relativeId(configFile)} with warnings`))
+        stderr(bold(`loaded ${relativeId(configFile)} with warnings`))
         warnings.flush()
       }
 
@@ -40,7 +40,7 @@ export function loadConfigFile (
     .then(({ output: [{ code }] }: RollupOutput) => {
       // temporarily override require
       const defaultLoader = require.extensions['.js']
-      require.extensions['.js'] = (module: NodeModuleWithCompile, filename: string) => {
+      require.extensions['.js'] = (module: any, filename: string) => {
         if (filename === configFile) {
           module._compile(code, filename)
         } else {

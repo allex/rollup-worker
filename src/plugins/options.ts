@@ -18,13 +18,13 @@ import configLoader from '../utils/configLoader'
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
 
-type RollupContext = {
+interface RollupContext {
   input: Kv;
   output: Kv;
   options: Kv;
 }
 
-export type IPluginOptionParser <T = Kv> = (options: Partial<T>, ctx: RollupContext) => T;
+export type IPluginOptionParser <T = Kv> = (options: Partial<T>, ctx: RollupContext) => T
 
 const findTsconfig = (
   entryFile: string,
@@ -101,35 +101,36 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
 
   typescript (o, { input, options, output: { format } }) {
     // resolve input tsconfig file
-    const tsconfig = o.tsconfig || findTsconfig(input)
+    // const tsconfig = o.tsconfig || findTsconfig(input)
 
     // https://www.npmjs.com/package/rollup-plugin-typescript2#plugin-options
     return merge(
       {
-        check: true,
-        abortOnError: false,
-        cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
-        // If true, declaration files will be emitted in the directory given in the
-        // tsconfig. If false, the declaration files will be placed inside the destination
-        // directory given in the Rollup configuration.
-        useTsconfigDeclarationDir: false,
-        tsconfigDefaults: {
-          compilerOptions: {
-            sourceMap: options.sourcemap,
-            jsx: 'react',
-            declaration: true,
-            // tsc@4.3 defaults to true, https://www.typescriptlang.org/tsconfig#useDefineForClassFields
-            useDefineForClassFields: false
-          }
-        },
-        // some ts options to been force overwrite
-        tsconfigOverride: {
-          compilerOptions: {
-            target: 'esnext',
-            newLine: 'lf'
-          }
-        }
-      }, { ...o, tsconfig }
+        // check: true,
+        // abortOnError: false,
+        // cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
+        // // If true, declaration files will be emitted in the directory given in the
+        // // tsconfig. If false, the declaration files will be placed inside the destination
+        // // directory given in the Rollup configuration.
+        // useTsconfigDeclarationDir: false,
+        // tsconfigDefaults: {
+        //   compilerOptions: {
+        //     sourceMap: options.sourcemap,
+        //     jsx: 'react',
+        //     declaration: true,
+        //     // tsc@4.3 defaults to true, https://www.typescriptlang.org/tsconfig#useDefineForClassFields
+        //     useDefineForClassFields: false
+        //   }
+        // },
+        // // some ts options to been force overwrite
+        // tsconfigOverride: {
+        //   compilerOptions: {
+        //     target: 'esnext',
+        //     newLine: 'lf'
+        //   }
+        // }
+      },
+      o
     )
   },
 

@@ -7,7 +7,6 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
-import chalk from 'chalk'
 import Debug from 'debug'
 import { basename, resolve } from 'path'
 import prettyBytes from 'pretty-bytes'
@@ -22,6 +21,7 @@ import { buildPlugin } from './plugins'
 import { mergeArray, relativeId } from './utils'
 import { stderr } from './utils/logging'
 
+import { bold, cyan, green } from './utils/colors'
 import configLoader from './utils/configLoader'
 
 export { version } from '../package.json'
@@ -29,8 +29,7 @@ export { loadConfigFile } from './loadConfigFile'
 
 export interface BundlerEntry {
   input: InputOption;
-  targets?: OutputOptions; // deprecated
-  output: OutputOptions;
+  output: OutputOptions[];
   plugins: Kv;
   globals: Kv;
   external: (id: string, format: string, defaultFn: any) => boolean | Kv<string>;
@@ -77,6 +76,8 @@ export interface RollupContext extends InputOptions {
 
 export class Bundler {
   config: BundlerOptions
+
+  rootDir: string
 
   /**
    * Multi-entry config for rollup bundle
@@ -164,13 +165,12 @@ export class Bundler {
   _normalizeEntry (entry: BundlerEntry): Array<{ i: InputOptions; o: OutputOptions; }> {
     const destDir = this.config.destDir
     const {
-      targets, // `targets` be deprecated, use output instead
       output,
       globals = {},
       ...baseInput
     } = entry
 
-    let chunks = output || targets
+    let chunks: OutputOptions[] = output
     if (!chunks) {
       throw new Error('`output` mandatory required')
     }
@@ -301,14 +301,14 @@ export class Bundler {
 
     debug('entries (normalized) => \n%O', list)
 
-    stderr(chalk.cyan(`build ${chalk.bold(relativeId(entry.input))} \u2192 ${chalk.bold(files.join(', '))} ...`))
+    stderr(cyan(`build ${bold(relativeId(entry.input))} \u2192 ${bold(files.join(', '))} ...`))
 
     return sequence(list, async ({ i, o }): Promise<RollupBuild> => {
       const start = Date.now()
       const bundle: RollupBuild = await rollup.rollup(i)
       const out: RollupOutput = await bundle.write(o)
 
-      stderr(chalk.green(`created ${chalk.bold(relativeId(o.file || o.dir))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${chalk.bold(prettyMs(Date.now() - start))}`))
+      stderr(green(`created ${bold(relativeId(o.file || o.dir))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${bold(prettyMs(Date.now() - start))}`))
       return bundle
     })
   }

@@ -1,44 +1,37 @@
-import chalk from 'chalk'
+import { RollupError } from 'rollup'
+import { bold, cyan, dim, red } from '../utils/colors'
+
 import { relativeId } from './'
 
-if (!chalk.supportsColor) chalk.enabled = false
-
 // log to stderr to keep `rollup main.js > bundle.js` from breaking
-export const stderr = console.error.bind(console) // eslint-disable-line no-console
+export const stderr = (...args: readonly unknown[]) => process.stderr.write(`${args.join('')}\n`)
 
-export function stderrln (msg: string) {
-  process.stderr.write(msg)
-  process.stderr.write('\n')
-}
-
-export function handleError (err, recover) {
-  if (recover === void 0) { recover = false }
+export function handleError (err: RollupError, recover = false): void {
   let description = err.message || err
-  if (err.name) { description = `${err.name}: ${description}` }
-  const message = (err.plugin
-    ? `(${err.plugin} plugin) ${description}`
-    : description) || err
+  if (err.name) description = `${err.name}: ${description}`
+  const message = (err.plugin ? `(plugin ${err.plugin}) ${description}` : description) || err
 
-  stderr(chalk.bold.red('[!] ' + chalk.bold(message.toString())))
+  stderr(bold(red(`[!] ${bold(message.toString())}`)))
 
-  // TODO should this be "err.url || (err.file && err.loc.file) || err.id"?
   if (err.url) {
-    stderr(chalk.cyan(err.url))
+    stderr(cyan(err.url))
   }
 
   if (err.loc) {
-    stderr(relativeId(`${err.loc.file || err.id} (${err.loc.line}: ${err.loc.column})`))
+    stderr(`${relativeId((err.loc.file || err.id)!)} (${err.loc.line}:${err.loc.column})`)
   } else if (err.id) {
     stderr(relativeId(err.id))
   }
 
   if (err.frame) {
-    stderr(chalk.dim(err.frame))
-  } else if (err.stack) {
-    stderr(chalk.dim(err.stack))
+    stderr(dim(err.frame))
+  }
+
+  if (err.stack) {
+    stderr(dim(err.stack))
   }
 
   stderr('')
 
-  if (!recover) { process.exit(1) }
+  if (!recover) process.exit(1)
 }

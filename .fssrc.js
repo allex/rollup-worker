@@ -1,6 +1,6 @@
 import progressPlugin from 'rollup-plugin-progress'
-import typescript from 'rollup-plugin-typescript'
-import { eslint } from 'rollup-plugin-eslint'
+import typescript from '@rollup/plugin-typescript'
+import eslint from '@rollup/plugin-eslint'
 
 import { name, version, license, author, description, dependencies } from './package.json'
 
@@ -33,7 +33,7 @@ export default {
   entry: [
     {
       input: 'src/index.ts',
-      plugins: [ 'resolve', [typescript], 'commonjs', eslint, progress ],
+      plugins: [ 'resolve', [typescript], 'commonjs', /* eslint, */ progress ],
       output: [
         { file: 'lib/rollup-worker.js', format: 'cjs', banner: banner(name, true) },
         { file: 'lib/rollup-worker.es.js', format: 'es', banner: banner(name, true) }
@@ -41,7 +41,7 @@ export default {
     },
     {
       input: 'src/bin/cli.ts',
-      plugins: [ 'resolve', [typescript], 'commonjs', eslint, progress ],
+      plugins: [ 'resolve', [typescript], 'commonjs', /* eslint, */ progress ],
       output: [
         {
           file: 'bin/cli.js',

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es6",
+    "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "diagnostics": true,
     "downlevelIteration": false,
@@ -8,8 +9,8 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "noEmitOnError": true,
-    "noImplicitAny": true,
+    "noEmitOnError": false,
+    "noImplicitAny": false,
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

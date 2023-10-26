@@ -1,4 +1,3 @@
-import chalk from 'chalk'
 import dateTime from 'date-time'
 import prettyMs from 'pretty-ms'
 import signalExit from 'signal-exit'
@@ -6,6 +5,7 @@ import signalExit from 'signal-exit'
 import { Bundler, version } from '../index'
 import { relativeId } from '../utils'
 import batchWarnings from '../utils/batchWarnings'
+import { bold, cyan, green, underline } from '../utils/colors'
 import { handleError, stderr } from '../utils/logging'
 
 import alternateScreen from './alternateScreen'
@@ -30,7 +30,7 @@ function watch (configFile: string, configs: {}, silent = false) {
   let watcher
 
   function start (configs) {
-    screen.reset(chalk.underline('rollup-worker v' + version))
+    screen.reset(underline('rollup-worker v' + version))
     const screenWriter = configs.processConfigsErr || screen.reset
     watcher = new Bundler(configs).watch()
     watcher.on('event', event => {
@@ -45,7 +45,7 @@ function watch (configFile: string, configs: {}, silent = false) {
           handleError(event.error, true)
           break
         case 'START':
-          screenWriter(chalk.underline('rollup-worker v' + version))
+          screenWriter(underline('rollup-worker v' + version))
           break
         case 'BUNDLE_START':
           if (!silent) {
@@ -57,12 +57,12 @@ function watch (configFile: string, configs: {}, silent = false) {
                   .map(key => input[key])
                   .join(', ')
             }
-            stderr(chalk.cyan(`bundles ${chalk.bold(relativeId(input))} \u2192 ${chalk.bold(event.output.map(relativeId).join(', '))}...`))
+            stderr(cyan(`bundles ${bold(relativeId(input))} \u2192 ${bold(event.output.map(relativeId).join(', '))}...`))
           }
           break
         case 'BUNDLE_END':
           warnings.flush()
-          if (!silent) { stderr(chalk.green(`created ${chalk.bold(event.output.map(relativeId).join(', '))} in ${chalk.bold(prettyMs(event.duration))}`)) }
+          if (!silent) { stderr(green(`created ${bold(event.output.map(relativeId).join(', '))} in ${bold(prettyMs(event.duration))}`)) }
           if (event.result && event.result.getTimings) {
             printTimings(event.result.getTimings())
           }

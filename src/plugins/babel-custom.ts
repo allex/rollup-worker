@@ -1,8 +1,9 @@
 import { isEmpty, merge } from '@fdio/utils'
 import { createBabelInputPluginFactory } from '@rollup/plugin-babel'
-import transformFastRest from './transform-fast-rest'
 
 import { resolveModule } from '../utils'
+
+import transformFastRest from './transform-fast-rest'
 
 const isTruthy = v => !isEmpty(v)
 
@@ -57,7 +58,7 @@ export default () => {
   return createBabelInputPluginFactory(babelCore => {
     return {
       // Passed the plugin options.
-      options({ custom: customOptions, ...pluginOptions }) {
+      options ({ custom: customOptions, ...pluginOptions }) {
         return {
           // Pull out any custom options that the plugin might have.
           customOptions,

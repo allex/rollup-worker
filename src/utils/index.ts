@@ -62,3 +62,28 @@ export const loadModule = <T = any> (moduleName: string, paths?: string[]): T =>
   }
   return require(p) as T
 }
+
+export function getOrCreate<K, V> (map: Map<K, V>, key: K, init: () => V): V {
+  const existing = map.get(key)
+  if (existing) {
+    return existing
+  }
+  const value = init()
+  map.set(key, value)
+  return value
+}
+
+export function printQuotedStringList (
+  list: readonly string[],
+  verbs?: readonly [string, string]
+): string {
+  const isSingleItem = list.length <= 1
+  const quotedList = list.map(item => `"${item}"`)
+  let output = isSingleItem
+    ? quotedList[0]
+    : `${quotedList.slice(0, -1).join(', ')} and ${quotedList.slice(-1)[0]}`
+  if (verbs) {
+    output += ` ${isSingleItem ? verbs[0] : verbs[1]}`
+  }
+  return output
+}
