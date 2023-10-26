@@ -132,9 +132,13 @@ loadConfigFile(configFile)
   })
   .catch(e => fatal(e))
 
-function fatal (message) {
-  if (message instanceof Error) message = message.stack.replace(/^\S*?Error:/, 'ERROR:')
-  stderr(message)
+function fatal (err) {
+  let msg = err
+  if (err instanceof Error) {
+    msg = `ERROR: ${err.message}`
+    msg += `${msg[msg.length - 1] === '\n' ? '' : '\n'}${err.stack.trimStart('\n')}`
+  }
+  stderr(msg)
   process.exit(1)
 }
 
