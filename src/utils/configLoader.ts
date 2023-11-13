@@ -1,27 +1,19 @@
-import fs from 'fs'
-import p from 'path'
-import { promisify } from 'util'
+import { readFileSync, existsSync } from 'fs'
+import { resolve, basename, dirname, extname, parse } from 'path'
 
-interface ConfigLoaderOptions<T = any> {
-  files?: string[];
-  cwd?: string;
-  stopDir?: string;
-  packageKey?: string;
-  parseJSON?: (o: string) => T;
+interface ConfigLoaderOptions {
+  files: string[];
+  cwd: string;
+  stopDir: string;
+  packageKey: string;
+  parseJSON: <T> (o: string) => T;
 }
 
-interface ILoader<T = any> {
+interface ILoader {
   name: string;
   test?: RegExp;
-  load (path: string): Promise<T>;
+  load <T> (path: string): T;
 }
-
-// async read file
-// @returns {Promise<T>}
-const readFile = promisify(fs.readFile)
-
-// check if a file exists (sync)
-const pathExistsSync = fs.existsSync
 
 export class ConfigLoader {
   options: ConfigLoaderOptions
@@ -30,7 +22,7 @@ export class ConfigLoader {
   existsCache = new Map<string, boolean>()
 
   // cache loader for localize transform
-  loaders = new Set<ILoader<any>>()
+  loaders = new Set<ILoader>()
 
   /**
    * We need to read package json data in `.resolve` method to check if `packageKey` exists in the file
@@ -45,9 +37,9 @@ export class ConfigLoader {
     stopDir,
     packageKey,
     parseJSON = JSON.parse
-  }: ConfigLoaderOptions = {}) {
+  }: Partial<ConfigLoaderOptions> = {}) {
     if (stopDir) {
-      stopDir = p.resolve(stopDir)
+      stopDir = resolve(stopDir)
     }
     this.options = { files, cwd, stopDir, packageKey, parseJSON }
   }
@@ -87,24 +79,25 @@ export class ConfigLoader {
   /**
    * Find specific file up-recusively
    */
-  findUp (
-    currentDir: string,
-    options: ConfigLoaderOptions
-  ): string | null {
+  findUp (currentDir: string, options: {
+    files: string[];
+    packageKey: string;
+    stopDir: string;
+  }): string | null {
     const { files, packageKey } = options
     for (const filename of files) {
-      const file = p.resolve(currentDir, filename)
+      const file = resolve(currentDir, filename)
       const exists =
         // Disable cache in tests
         process.env.NODE_ENV !== 'test' && this.existsCache.has(file)
           ? this.existsCache.get(file)
-          : pathExistsSync(file)
+          : existsSync(file)
 
       this.existsCache.set(file, exists)
 
       if (exists) {
         // If there's no `packageKey` option or this is not a `package.json` file
-        if (!packageKey || p.basename(file) !== 'package.json') {
+        if (!packageKey || basename(file) !== 'package.json') {
           return file
         }
 
@@ -126,13 +119,13 @@ export class ConfigLoader {
       }
     }
 
-    const nextDir = p.dirname(currentDir)
+    const nextDir = dirname(currentDir)
 
     // Don't traverse above the module root
     if (
       nextDir === currentDir ||
       currentDir === options.stopDir ||
-      p.basename(currentDir) === 'node_modules'
+      basename(currentDir) === 'node_modules'
     ) {
       return null
     }
@@ -141,51 +134,46 @@ export class ConfigLoader {
     return this.findUp(nextDir, options)
   }
 
-  resolve (opts: ConfigLoaderOptions): string {
+  resolve (opts: Partial<ConfigLoaderOptions>): string {
     const { cwd, ...options } = this.normalizeOptions(opts)
     return this.findUp(cwd, options)
   }
 
-  async load <T = any> (
-    opts: ConfigLoaderOptions
-  ): Promise<{ path: string; data: T | null; } | null> {
+  load <T> (opts: Partial<ConfigLoaderOptions>): { path: string; data: T | null; } | null {
     const { cwd, ...options } = this.normalizeOptions(opts)
     const filepath = this.findUp(cwd, options)
 
-    if (filepath) {
-      const loader = this.findLoader(filepath)
-      if (loader) {
-        return {
-          path: filepath,
-          data: await loader.load(filepath)
-        }
-      }
+    if (!filepath) {
+      return null
+    }
 
-      let data: T | null = null
-
-      const extname = p.extname(filepath).slice(1)
-      if (extname === 'js') {
-        delete require.cache[filepath]
-        data = require(filepath)
-      } else if (extname === 'json') {
-        if (this.pkgCache.has(filepath)) {
-          data = this.pkgCache.get(filepath)[options.packageKey]
-        } else {
-          data = this.options.parseJSON(await readFile(filepath))
-        }
-      } else {
-        // Don't parse data if it's neither .js nor .json
-        // Leave this to user-land
-        data = await readFile(filepath)
-      }
-
+    const loader = this.findLoader(filepath)
+    if (loader) {
       return {
         path: filepath,
-        data
+        data: loader.load(filepath)
       }
     }
 
-    return null
+    let data: T | null = null
+
+    const ext = extname(filepath).slice(1)
+    if (ext === 'js') {
+      delete require.cache[filepath]
+      data = require(filepath)
+    } else if (ext === 'json') {
+      if (this.pkgCache.has(filepath)) {
+        data = this.pkgCache.get(filepath)[options.packageKey]
+      } else {
+        data = this.options.parseJSON<T>(readFileSync(filepath, 'utf8'))
+      }
+    } else {
+      // Don't parse data if it's neither .js nor .json
+      // Leave this to user-land
+      data = readFileSync(filepath, 'utf8') as T
+    }
+
+    return { path: filepath, data }
   }
 
   clearCache () {
@@ -195,11 +183,11 @@ export class ConfigLoader {
     return this
   }
 
-  normalizeOptions (opts: ConfigLoaderOptions): ConfigLoaderOptions {
+  normalizeOptions (opts: Partial<ConfigLoaderOptions>): ConfigLoaderOptions {
     const options = { ...this.options, ...opts } // shadow clone
 
-    options.cwd = p.resolve(options.cwd)
-    options.stopDir = options.stopDir ? p.resolve(options.stopDir) : p.parse(options.cwd).root
+    options.cwd = resolve(options.cwd)
+    options.stopDir = options.stopDir ? resolve(options.stopDir) : parse(options.cwd).root
 
     if (!options.files || options.files.length === 0) {
       throw new Error('files must be an non-empty array!')
@@ -210,5 +198,5 @@ export class ConfigLoader {
 }
 
 export default new ConfigLoader({
-  stopDir: p.dirname(process.cwd())
+  stopDir: dirname(process.cwd())
 })

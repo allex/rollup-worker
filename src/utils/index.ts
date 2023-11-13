@@ -5,7 +5,7 @@ import resolveFrom from 'resolve-from'
 
 const absolutePath = /^(?:\/|(?:[A-Za-z]:)?[\\|/])/
 
-function isAbsolute (p) {
+function isAbsolute (p: string) {
   return absolutePath.test(p)
 }
 
@@ -14,13 +14,15 @@ export const uniq = <T> (list: T[]): T[] => list.reduce((p, o) => {
   return p
 }, [] as T[])
 
-export function relativeId (id) {
+export function relativeId (id: string) {
   if (typeof process === 'undefined' || !isAbsolute(id)) { return id }
   return path.relative(process.cwd(), id)
 }
 
-export function result (o, ...args) {
-  return typeof o === 'function' ? o(...args) : o
+type Func<T> = ((...args: any[]) => T)
+
+export function result <T>(o: T | Func<T>, ...args: any[]) {
+  return typeof o === 'function' ? (o as Func<T>)(...args) : o
 }
 
 export function mergeArray (p1, p2, { pk } = { pk: 'name' }) {
@@ -49,7 +51,7 @@ export const resolveModule = (moduleName: string, paths?: string[]): string => {
       if ((modulePath = resolveFrom(path, moduleName))) {
         return modulePath
       }
-    } catch (e) {}
+    } catch (e) { /* empty */ }
   }
   return modulePath
 }
@@ -87,3 +89,24 @@ export function printQuotedStringList (
   }
   return output
 }
+
+export const asArray = <T>(o: T | T[]): T[] => Array.isArray(o) ? o : [o];
+
+const boolValues = {
+  1: true,
+  0: false,
+  Y: true,
+  N: false,
+  yes: true,
+  no: false,
+  true: true,
+  false: false,
+  on: true,
+  off: true
+}
+
+export const parseBoolValue = (v: string | number, defaultVal: boolean = false): boolean =>
+  Object.prototype.hasOwnProperty.call(boolValues, v) ? boolValues[v] : defaultVal
+
+export const defaultTo = <T>(v: any, defval: T): T =>
+  v != null ? v as T : defval

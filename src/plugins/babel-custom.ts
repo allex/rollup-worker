@@ -44,9 +44,9 @@ const mergeConfigItems = (babel, type, ...configItemsToMerge) => {
 
 const createConfigItems = (babel, type, items) => {
   return items.map(item => {
-    let { name, value, ...options } = item
-    value = value || [resolveModule(name), options]
-    return babel.createConfigItem(value, { type })
+    const { name, value, ...options } = item
+    const v = value || [resolveModule(name), options]
+    return babel.createConfigItem(v, { type })
   })
 }
 
@@ -92,33 +92,29 @@ export default () => {
               replace: customOptions.defines
             },
             !customOptions.modern &&
-              !isNodeTarget && {
-                name: 'babel-plugin-transform-async-to-promises',
-                inlineHelpers: true,
-                externalHelpers: false,
-                minify: true
-              },
-            !customOptions.modern &&
-              !isNodeTarget && {
-                value: [
-                  transformFastRest,
-                  {
-                    // Use inline [].slice.call(arguments)
-                    helper: false,
-                    literal: true
-                  },
-                  'transform-fast-rest'
-                ]
-              },
-            {
-              name: '@babel/plugin-proposal-class-properties',
-              loose: true
+            !isNodeTarget && {
+              name: 'babel-plugin-transform-async-to-promises',
+              inlineHelpers: true,
+              externalHelpers: false,
+              minify: true
             },
             !customOptions.modern &&
-              !isNodeTarget && {
-                name: '@babel/plugin-transform-regenerator',
-                async: false
-              },
+            !isNodeTarget && {
+              value: [
+                transformFastRest,
+                {
+                  // Use inline [].slice.call(arguments)
+                  helper: false,
+                  literal: true
+                },
+                'transform-fast-rest'
+              ]
+            },
+            !customOptions.modern &&
+            !isNodeTarget && {
+              name: '@babel/plugin-transform-regenerator',
+              async: false
+            },
             {
               name: 'babel-plugin-macros'
             }

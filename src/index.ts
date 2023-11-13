@@ -11,49 +11,32 @@ import Debug from 'debug'
 import { basename, resolve } from 'path'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
-import rollup, { InputOption, InputOptions, OutputOptions, RollupBuild, RollupOutput } from 'rollup'
+import rollup, { ExternalOption, InputOptions, IsExternal, MergedRollupOptions, ModuleFormat, OutputOptions, RollupBuild, RollupOutput, RollupWatchOptions, WatcherOptions } from 'rollup'
+import { find, isArray, isFunction, isObject, isString, sequence } from '@fdio/utils'
 
-import {
-  defaultTo, find, isArray, isEmpty, isFunction, omit, sequence
-} from '@fdio/utils'
-
-import { buildPlugin } from './plugins'
-import { mergeArray, relativeId } from './utils'
+import { initPlugin } from './plugins/plugin-loader'
+import { asArray, relativeId } from './utils'
 import { stderr } from './utils/logging'
 
 import { bold, cyan, green } from './utils/colors'
 import configLoader from './utils/configLoader'
+import { BundlerEntry, BundlerInputOptions, BundlerOutputOptions, NormalizedBundlerOptions } from './types'
 
 export { version } from '../package.json'
 export { loadConfigFile } from './loadConfigFile'
 
-export interface BundlerEntry {
-  input: InputOption;
-  output: OutputOptions[];
-  plugins: Kv;
-  globals: Kv;
-  external: (id: string, format: string, defaultFn: any) => boolean | Kv<string>;
+declare module 'rollup' {
+  interface InputOptions {
+    dependencies?: string[];
+  }
+  interface OutputOptions {
+    minimize?: boolean;
+  }
 }
 
-export interface BundlerOptions {
-  rootDir?: string; // default `./`
-  destDir?: string; // default `./lib`
-  plugins?: object;
-  pluginOptions?: object; // deprecated
-  dependencies?: Kv;
-  entry: BundlerEntry[];
-  compress?: boolean;
-  sourcemap?: boolean;
-  jsx?: string;
-  jsxFragment?: string;
-  target?: 'web' | 'node';
-  vue?: boolean;
-  react?: boolean;
-}
+type NpmPackage = Record<'dependencies' | 'devDependencies' | 'peerDependencies', Kv<string>>
 
-type RollupContextOptions = Omit<BundlerOptions, 'entry'>
-
-const debug = Debug('rollup-worker')
+const debug = Debug('rollup-worker:bundler')
 
 // default plugins (for zero config)
 const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
@@ -61,23 +44,8 @@ const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
 // some builtin plugins
 const builtinPlugins = ['json', 'replace']
 
-const isNativeRollupConfig = o => (isArray(o) ? o : [o]).some(o => !!(o.input && o.output))
-
-const transformFromRollupConfig = (o: object): BundlerOptions => {
-  return {
-    entry: isArray(o) ? o : [o]
-  }
-}
-
-export interface RollupContext extends InputOptions {
-  output: OutputOptions;
-  options: RollupContextOptions;
-}
-
 export class Bundler {
-  config: BundlerOptions
-
-  rootDir: string
+  options: NormalizedBundlerOptions
 
   /**
    * Multi-entry config for rollup bundle
@@ -85,71 +53,43 @@ export class Bundler {
    * @constructor
    * @param {Object} config The config for multiple bundle
    */
-  constructor (options: BundlerOptions) {
+  constructor (options: NormalizedBundlerOptions) {
     if (!options) {
-      throw new Error('Illegal constructor arguments.')
+      throw new Error('Illegal bundler configs')
     }
 
-    // Adapter options is a native rollup configs
-    if (isNativeRollupConfig(options)) {
-      options = transformFromRollupConfig(options)
-    }
+    // Normalized bundler options
+    options.rootDir = resolve(options.rootDir || '.')
+    options.destDir = resolve(options.rootDir, options.destDir || './lib')
 
-    const entry = options.entry
-    if (!entry) {
-      throw new Error('`entry` not valid')
-    }
-
-    if (!isArray(entry)) {
-      options.entry = [entry as BundlerEntry]
-    }
-
-    const config = {
-      plugins: {}, // settings for default plugins
-      ...options
-    }
-
-    if (config.pluginOptions) {
-      stderr('rb config `pluginOptions` deprecated, use `plugins` instead')
-      if (isEmpty(config.plugins)) {
-        config.plugins = config.pluginOptions
-      }
-    }
-
-    config.rootDir = resolve(config.rootDir || '.')
-    config.destDir = resolve(config.destDir || './lib')
-
-    this.config = config
-    this.rootDir = config.rootDir
+    this.init(options)
   }
 
-  async _init () {
-    const { config } = this
+  private init (opts: NormalizedBundlerOptions) {
+    const options = { ...opts }
 
     // resolve project package.json
-    const pkg = await configLoader.load({
-      files: ['package.json'],
-      cwd: config.rootDir
-    }) || {}
+    const pkg = configLoader.load<NpmPackage>({ files: ['package.json'], cwd: options.rootDir })
 
     // Auto detect [vue, react] by parse package dependencies
-    if (pkg.data) {
+    if (pkg?.data) {
       const { dependencies, devDependencies } = pkg.data
       const deps = Object.keys({ ...dependencies, ...devDependencies })
-      this.config = ['vue', 'react'].reduce((p, k) => {
-        if (!p.hasOwnProperty(k)) {
-          p[k] = deps.some(k => new RegExp(`\b${k}\b`).test(k))
+      ;['vue', 'react'].forEach(k => {
+        if (!options[k] == null) {
+          options[k] = deps.some(k => new RegExp(`\b${k}\b`).test(k))
         }
-        return p
-      }, config)
+      })
     }
 
-    this.pkg = pkg
+    this.options = options
   }
 
-  _checkExternal (id: string, input: InputOptions) {
-    const targets = input.dependencies || this.config.dependencies || []
-    const list = isArray(targets) ? targets : Object.keys(targets).filter(k => targets[k] !== false)
+  private checkExternal (id: string, input: InputOptions) {
+    const targets = input.dependencies || this.options.dependencies || []
+    const list = isArray(targets)
+      ? targets
+      : Object.keys(targets).filter(k => targets[k] !== false)
     for (const item of list) {
       // pattern match by word and suffix checks
       if (id === item || id.startsWith(item)) {
@@ -159,175 +99,177 @@ export class Bundler {
     return false
   }
 
-  /**
-   * Normalize bundler config for rollup engine input, output configs.
-   */
-  _normalizeEntry (entry: BundlerEntry): Array<{ i: InputOptions; o: OutputOptions; }> {
-    const destDir = this.config.destDir
+  private createConfig(out: BundlerOutputOptions, input: BundlerInputOptions): MergedRollupOptions {
     const {
-      output,
-      globals = {},
-      ...baseInput
-    } = entry
+      rootDir
+    } = this.options
 
-    let chunks: OutputOptions[] = output
-    if (!chunks) {
-      throw new Error('`output` mandatory required')
+    const {
+      globals,
+      plugins: commonPlugins = [],
+      external: customExternalFunc,
+      ...inputRest
+    } = input
+
+    const format: string = out.format
+    const modern = format === 'modern'
+
+    const pluginCtx = { input: input.input, output: out, options: this.options }
+
+    // init plugins: merge with builtin and cleanup
+    const inputPlugins = builtinPlugins
+      .reduce((list, p) => {
+        if (p && !list.some(n => isString(n) ? n === p : n.name === p)) list.push(p)
+        return list
+      }, [...(commonPlugins.length ? commonPlugins : zeroConfigPlugins)])
+      .map(p => initPlugin(p, pluginCtx))
+      .filter(Boolean)
+
+    const inputOptions: InputOptions = {
+      ...inputRest,
+      plugins: inputPlugins,
+      external: this.proxyExternal(customExternalFunc, inputRest),
     }
 
-    if (!isArray(chunks)) {
-      chunks = [chunks]
+    // extract some extends fields
+    const {
+      minimize,
+      plugins: outputPlugins = [],
+      ...rest
+    } = out
+
+    // construct output as {rollup.OutputOptions}
+    const outputOptions: OutputOptions = {
+      ...rest,
+      globals,
+      indent: '  ',
+      format: (modern ? 'es' : format) as ModuleFormat
     }
 
-    return chunks.map(chunk => {
-      const { format } = chunk
-      if (!format) {
-        throw new Error('target output format required.')
-      }
-
-      const modern = format === 'modern'
-      const input = { ...baseInput }
-
-      // extract some extends option properties
-      const {
-        compress,
-        ...output
-      } = chunk
-
-      // merge with builtin and common options
-      Object.assign(output, {
-        globals,
-        indent: '  ',
-      })
-
-      // resolve output file with base dir
-      if (output.file) {
-        output.file = resolve(destDir, output.file)
-      }
-
-      const options: RollupContextOptions = omit(this.config, 'entry')
-
-      const bundleCtx: RollupContext = {
-        ...input,
-        output,
-        options
-      }
-
-      // provides some default plugins if list is empty
-      const plugins = mergeArray(
-        defaultTo(input.plugins, zeroConfigPlugins, isEmpty),
-        builtinPlugins,
-        { pk: 'name' })
-
-      input.plugins = plugins
-        .map(p => buildPlugin(p, bundleCtx))
-        .filter(Boolean)
-
-      debug('input: ', input)
-
-      output.plugins = (output.plugins || [])
-
-      // default to compress (except as configure this option explicitly)
-      let enableCompress = options.compress !== false
-
-      const { file } = output
-      if (file) {
-        // enable minimize by the default
-        if (compress !== undefined) {
-          enableCompress = !!compress
-        } else if (/\.min\./.test(basename(file))) {
-          // enable minimize when out file suffixed `*.min.*` pattern
-          enableCompress = true
-        }
-      }
-
-      // Add compress based on terser
-      if (enableCompress) {
-        output.plugins.push('minify')
-      }
-
-      // reduce output plugins exists in input
-      output.plugins = output.plugins
-        .reduce((arr, p) => {
-          const name = typeof p === 'string' ? p : p.name
-          if (!find(plugins, (o) => o === p || name && (o === name || o.name === name))) {
-            arr.push(p)
-          }
-          return arr
-        }, [])
-        .map(p => buildPlugin(p, bundleCtx))
-        .filter(Boolean)
-
-      debug('output: ', output)
-
-      // external(importee, importer);
-      const defaultExternalFn = (id: string, checkDependency: boolean) => {
-        if (id === 'babel-plugin-transform-async-to-promises/helpers') {
-          return false
-        }
-
-        const isDependency = this._checkExternal(id, input)
-        checkDependency = typeof checkDependency === 'boolean' ? checkDependency : false
-        if (checkDependency) {
-          // Check cjs and esm with external bundles by the defaults
-          return isDependency
-        }
-
-        return !/umd|iife/.test(format) && isDependency
-      }
-
-      const _external = input.external // fn(id, format, defaultFn)
-      const external = !_external
-        ? defaultExternalFn
-        : (isFunction(_external)
-          ? id => _external(id, format, defaultExternalFn) : _external)
-
-      return {
-        i: {
-          ...input,
-          external
-        },
-        o: {
-          ...output,
-          format: modern ? 'es' : format
-        }
+    // resolve output file with base dir
+    ;['file', 'dir'].forEach(prop => {
+      if (outputOptions[prop]) {
+        outputOptions[prop] = resolve(rootDir, outputOptions[prop])
       }
     })
+
+    // default to compress (except as configure this option explicitly)
+    let enableMinimize = this.options.compress !== false
+      && this.options.minimize !== false
+
+    const { file } = outputOptions
+    if (file) {
+      // enable minimize by the default
+      if (minimize !== undefined) {
+        enableMinimize = !!minimize
+      } else if (/\.min\./.test(basename(file))) {
+        // enable minimize when out file suffixed `*.min.*` pattern
+        enableMinimize = true
+      }
+    }
+
+    // Add compress based on terser
+    if (enableMinimize) {
+      outputPlugins.push('minimize')
+    }
+
+    // init output plugins, exclude plugins in inputs
+    outputOptions.plugins = outputPlugins
+      .reduce((arr, p) => {
+        const name = isString(p)
+          ? p
+          : typeof p === 'object' ? p.name : p
+        // avoid duplicates plugins which in input.plugins already
+        if (name && !find(inputPlugins, (o) => o === p || name && (o === name || o.name === name))) {
+          arr.push(p)
+        }
+        return arr
+      }, [])
+      .map(p => initPlugin(p, pluginCtx))
+      .filter(Boolean)
+
+    return {
+      ...inputOptions,
+      output: [outputOptions]
+    }
   }
 
-  run (entry: BundlerEntry) {
-    const list = this._normalizeEntry(entry)
-    const files = list.map(({ o }) => relativeId(o.file || o.dir))
+  /**
+   * Normalize bundler config for std rollup.InputOptions
+   */
+  private normalizeEntry (entry: BundlerEntry): MergedRollupOptions[] {
+    const {
+      output = [],
+      ...inputOptions
+    } = entry
 
-    debug('entries (normalized) => \n%O', list)
+    return asArray(output).map(o => this.createConfig(o, inputOptions))
+  }
 
-    stderr(cyan(`build ${bold(relativeId(entry.input))} \u2192 ${bold(files.join(', '))} ...`))
+  proxyExternal (externalImpl: BundlerEntry['external'], inputs: InputOptions): ExternalOption {
+    // default external func
+    const defaultExternalFn: IsExternal = (id, _importer, isResolved) => {
+      if (isResolved || id === 'babel-plugin-transform-async-to-promises/helpers') {
+        return false
+      }
+      return this.checkExternal(id, inputs)
+    }
 
-    return sequence(list, async ({ i, o }): Promise<RollupBuild> => {
+    return !externalImpl
+      ? defaultExternalFn
+      : (
+        isFunction(externalImpl)
+          ? (id, importer, isResolved) => externalImpl(id, importer, isResolved, () => defaultExternalFn(id, importer, isResolved))
+          : externalImpl)
+  }
+
+  getEntries() {
+    return this.options.entry.reduce<MergedRollupOptions[]>((p, o) => p.concat(this.normalizeEntry(o)), [])
+  }
+
+  buildEntry (entry: BundlerEntry) {
+    const list = this.normalizeEntry(entry)
+
+    debug('normalized entries: \n%O', list)
+
+    let inputs: string[] = []
+    const input = entry.input
+    if (isObject(input)) {
+      inputs = Object.values(input)
+    } else {
+      inputs = asArray(input as Many<string>)
+    }
+
+    return sequence(list, async ({ output, ...input }): Promise<RollupBuild> => {
       const start = Date.now()
-      const bundle: RollupBuild = await rollup.rollup(i)
-      const out: RollupOutput = await bundle.write(o)
+      const files = output.map((o) => relativeId(o.file || o.dir))
 
-      stderr(green(`created ${bold(relativeId(o.file || o.dir))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${bold(prettyMs(Date.now() - start))}`))
+      stderr(cyan(`build ${bold(inputs.map(p => relativeId(p)).join(','))} \u2192 ${bold(files.join(', '))} ...`))
+      const bundle: RollupBuild = await rollup.rollup(input)
+
+      for (const o of output) {
+        const out: RollupOutput = await bundle.write(o)
+        stderr(green(`created ${bold(relativeId(o.file || o.dir))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${bold(prettyMs(Date.now() - start))}`))
+      }
+
       return bundle
     })
   }
 
   async build () {
-    await this._init()
-    return sequence(this.config.entry, o => this.run(o))
+    return sequence(this.options.entry, o => this.buildEntry(o))
   }
 
-  async watch (options?: any) {
-    const watchOptions = []
-    const watch = { chokidar: true, ...options }
-    await this._init()
-    this.config.entry.forEach(entry => {
-      const list = this._normalizeEntry(entry)
-      list.forEach(({ i, o }) => {
-        watchOptions.push({ watch, ...i, output: o })
+  async watch (options?: WatcherOptions) {
+    const watchOptions: RollupWatchOptions[] = []
+
+    this.options.entry.forEach(entry => {
+      const list = this.normalizeEntry(entry)
+      list.forEach(input => {
+        watchOptions.push({ watch: options, ...input })
       })
     })
+
     return rollup.watch(watchOptions)
   }
 }

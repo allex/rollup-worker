@@ -69,7 +69,7 @@ module.exports = {
         buffer: false
       } : {}
     },
-    minify: { // for terser
+    minimize: { // for terser
       ie8: false
     },
     replace: {

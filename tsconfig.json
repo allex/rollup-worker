@@ -3,7 +3,7 @@
     "target": "es6",
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
-    "diagnostics": true,
+    "diagnostics": false,
     "downlevelIteration": false,
     "lib": ["es5", "es6", "dom"],
     "moduleResolution": "node",

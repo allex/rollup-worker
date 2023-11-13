@@ -6,7 +6,7 @@
       "useBuiltIns": false,
       "exclude": ["transform-regenerator", "transform-async-to-generator"],
       "targets": {
-        "node": "7.10.1"
+        "node": "16"
       }
     }]
   ],

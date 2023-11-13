@@ -8,25 +8,20 @@
  */
 
 import { merge } from '@fdio/utils'
-import { dirname, extname, resolve } from 'path'
+import { dirname, extname } from 'path'
 
 import autoprefixer from 'autoprefixer'
 import cssnano from 'cssnano'
 
 import configLoader from '../utils/configLoader'
+import { PluginContext } from '../types'
 
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
 
-interface RollupContext {
-  input: Kv;
-  output: Kv;
-  options: Kv;
-}
+type PluginOptionsResolver = (options: Kv, ctx: PluginContext) => unknown
 
-export type IPluginOptionParser <T = Kv> = (options: Partial<T>, ctx: RollupContext) => T
-
-const findTsconfig = (
+const findTsConfig = (
   entryFile: string,
   {
     cwd = dirname(entryFile),
@@ -36,9 +31,9 @@ const findTsconfig = (
 
 // Provide default options for builtin plugins
 
-const defaultPluginOpts: Kv<IPluginOptionParser> = {
+const defaultPluginOpts: Kv<PluginOptionsResolver> = {
   resolve (o) {
-    // For more resolve options see <https://www.npmjs.com/package/resolve>
+    // For more resolve options see <https://github.com/rollup/plugins/tree/master/packages/node-resolve>
     // pay attention to [module/jsnext/browser/main] orders
     return merge(
       {
@@ -49,16 +44,14 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
         // prefer local modules for browser
         preferBuiltins: false,
         moduleDirectories: [
-          resolve(process.cwd(), 'node_modules')
+          'node_modules'
         ]
       }, o
     )
   },
 
   json (o) {
-    return {
-      indent: '  ',
-      ...o }
+    return { indent: '  ', ...o }
   },
 
   // For internal custom babel configs
@@ -67,8 +60,8 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
     const {
       defines = {}
     } = options
-    const useTypescript = ['.ts', '.tsx'].includes(extname(input))
-    const modern = output.format === 'modern'
+    const useTypescript = typeof input === 'string' && ['.ts', '.tsx'].includes(extname(input)) || false
+    const modern = (output.format as string) === 'modern'
     return merge(
       {
         extensions: EXTENSIONS,
@@ -99,39 +92,18 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
       ...o }
   },
 
-  typescript (o, { input, options, output: { format } }) {
-    // resolve input tsconfig file
-    // const tsconfig = o.tsconfig || findTsconfig(input)
-
-    // https://www.npmjs.com/package/rollup-plugin-typescript2#plugin-options
-    return merge(
-      {
-        // check: true,
-        // abortOnError: false,
-        // cacheRoot: `./node_modules/.cache/.rts2_cache_${format}`,
-        // // If true, declaration files will be emitted in the directory given in the
-        // // tsconfig. If false, the declaration files will be placed inside the destination
-        // // directory given in the Rollup configuration.
-        // useTsconfigDeclarationDir: false,
-        // tsconfigDefaults: {
-        //   compilerOptions: {
-        //     sourceMap: options.sourcemap,
-        //     jsx: 'react',
-        //     declaration: true,
-        //     // tsc@4.3 defaults to true, https://www.typescriptlang.org/tsconfig#useDefineForClassFields
-        //     useDefineForClassFields: false
-        //   }
-        // },
-        // // some ts options to been force overwrite
-        // tsconfigOverride: {
-        //   compilerOptions: {
-        //     target: 'esnext',
-        //     newLine: 'lf'
-        //   }
-        // }
-      },
-      o
-    )
+  typescript (o, { input, options }) {
+    const spec = merge({
+      compilerOptions: {
+        sourceMap: options.sourcemap,
+        target: 'esnext',
+        newLine: 'lf'
+      }
+    }, o)
+    if (options.autoTsconfig && !o.tsconfig && typeof input === 'string') {
+      o.tsconfig = findTsConfig(input)
+    }
+    return spec
   },
 
   globals (o, { output: { format } }) {
@@ -155,31 +127,32 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
     }, o)
   },
 
-  minify (o, { output: { format } }) {
-    const modern = format === 'modern'
-    // options for rollup-plugin-terser <https://github.com/terser/terser>
-    return merge(
-      {
+  minimize (o, { output: { format } }) {
+    const modern = (format as string) === 'modern'
+    return {
+      implementation: require('@rollup/plugin-terser'),
+      // options for rollup-plugin-terser <https://github.com/terser/terser>
+      options: merge({
         ie8: true,
         compress: {
           drop_console: !(format === 'cjs' || format === 'es')
         },
         output: {
+          shebang: true,
           indent_level: 2
         },
-        signature: true,
         module: modern || format === 'cjs' || format === 'es',
         ecma: modern ? 2017 : 5,
         toplevel: modern || format === 'cjs' || format === 'es'
-      }, o
-    )
+      }, o)
+    }
   },
 
   postcss (o, { options }) {
     return merge({
       plugins: [
         autoprefixer(),
-        options.compress !== false &&
+        options.minimize !== false &&
           cssnano({
             preset: 'default'
           })
@@ -191,10 +164,10 @@ const defaultPluginOpts: Kv<IPluginOptionParser> = {
   }
 }
 
-export const normalizeWithDefaultOptions = <T> (name: string, o: T, context: RollupContext): T => {
+export const getMergedOptions = <T> (name: string, o: Kv, context: PluginContext): T => {
   const func = defaultPluginOpts[name]
   if (func) {
-    return func(o, context)
+    return func(o, context) as T
   }
-  return o
+  return o as T
 }
