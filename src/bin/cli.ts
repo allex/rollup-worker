@@ -1,5 +1,6 @@
 import { resolve } from 'path'
 import fs from 'fs'
+
 import Debug from 'debug'
 
 import { parseBoolValue, relativeId } from '../utils'
@@ -26,7 +27,7 @@ const runCli = async (): Promise<void> => {
   const aliases = {
     w: 'watch',
     c: 'config',
-    v: 'version'
+    v: 'version',
   }
 
   // parse command args
@@ -76,6 +77,9 @@ const runCli = async (): Promise<void> => {
       case 'watch':
         commandOptions.watchMode = v === '' ? true : v
         break
+      default:
+        handleError(new Error(`Unknow cli options: ${k}`), true)
+        break
     }
   }
 
@@ -102,14 +106,14 @@ Usage: rb [-w] [--config | -c] <config_file.js>
   } else {
     // build
     const { options } = await loadAndParseConfigFile(configFile, commandOptions)
-    if (commandOptions.minimize != undefined) {
+    if (commandOptions.minimize !== undefined) {
       options.minimize = commandOptions.minimize
     }
     await build(options)
   }
 }
 
-(async () => {
+;(async () => {
   try {
     await runCli()
   } catch (e) {

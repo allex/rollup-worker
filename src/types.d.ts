@@ -1,7 +1,9 @@
-import { Plugin, ExternalOption, GlobalsOption, InputOption, InputOptions, OutputOptions } from 'rollup'
+import {
+  Plugin, ExternalOption, GlobalsOption, InputOption, InputOptions, OutputOptions,
+} from 'rollup'
 
 interface GenericConfigObject {
-	[key: string]: unknown;
+ [key: string]: unknown;
 }
 
 type RollupExternalPredicate = (source: string, importer: string | undefined, isResolved: boolean) => boolean | null | void;
@@ -17,7 +19,7 @@ type BundlerExternalFunc = (
 
 interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'> {
   /* @override add support with plugin id list */
-	plugins?: (PluginName | Plugin)[];
+  plugins?: (PluginName | Plugin)[];
 
   /* @override with BundlerExternalFunc support */
   external?: ExternalOption | BundlerExternalFunc;
@@ -26,7 +28,7 @@ interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'>
 }
 
 interface BundlerOutputOptions extends OutputOptions {
-	plugins?: (PluginName | Plugin)[];
+  plugins?: (PluginName | Plugin)[];
   output?: Array<OutputOptions & { plugins: (PluginName | Plugin)[]; }>
 }
 

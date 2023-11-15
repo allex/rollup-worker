@@ -7,20 +7,35 @@
  *   Allex Wang <allex.wxn@gmail.com> (http://iallex.com/)
  */
 
-import Debug from 'debug'
 import { basename, resolve } from 'path'
+
+import Debug from 'debug'
 import prettyBytes from 'pretty-bytes'
 import prettyMs from 'pretty-ms'
-import rollup, { ExternalOption, InputOptions, IsExternal, MergedRollupOptions, ModuleFormat, OutputOptions, RollupBuild, RollupOutput, RollupWatchOptions, WatcherOptions } from 'rollup'
-import { find, isArray, isFunction, isObject, isString, sequence } from '@fdio/utils'
+import rollup, {
+  ExternalOption,
+  InputOptions,
+  IsExternal,
+  MergedRollupOptions,
+  ModuleFormat,
+  OutputOptions,
+  RollupBuild,
+  RollupOutput,
+  RollupWatchOptions,
+  WatcherOptions,
+} from 'rollup'
+import {
+  find, isArray, isFunction, isObject, isString, sequence,
+} from '@fdio/utils'
 
 import { initPlugin } from './plugins/plugin-loader'
 import { asArray, relativeId } from './utils'
 import { stderr } from './utils/logging'
-
 import { bold, cyan, green } from './utils/colors'
 import configLoader from './utils/configLoader'
-import { BundlerEntry, BundlerInputOptions, BundlerOutputOptions, NormalizedBundlerOptions } from './types'
+import {
+  BundlerEntry, BundlerInputOptions, BundlerOutputOptions, NormalizedBundlerOptions,
+} from './types'
 
 export { version } from '../package.json'
 export { loadConfigFile } from './loadConfigFile'
@@ -53,10 +68,12 @@ export class Bundler {
    * @constructor
    * @param {Object} config The config for multiple bundle
    */
-  constructor (options: NormalizedBundlerOptions) {
-    if (!options) {
+  constructor (opts: NormalizedBundlerOptions) {
+    if (!opts) {
       throw new Error('Illegal bundler configs')
     }
+
+    const options = { ...opts }
 
     // Normalized bundler options
     options.rootDir = resolve(options.rootDir || '.')
@@ -75,9 +92,10 @@ export class Bundler {
     if (pkg?.data) {
       const { dependencies, devDependencies } = pkg.data
       const deps = Object.keys({ ...dependencies, ...devDependencies })
-      ;['vue', 'react'].forEach(k => {
+        ;['vue', 'react'].forEach(k => {
         if (!options[k] == null) {
-          options[k] = deps.some(k => new RegExp(`\b${k}\b`).test(k))
+          options[k] = deps.some(k =>
+            new RegExp(`\b${k}\b`).test(k))
         }
       })
     }
@@ -89,7 +107,8 @@ export class Bundler {
     const targets = input.dependencies || this.options.dependencies || []
     const list = isArray(targets)
       ? targets
-      : Object.keys(targets).filter(k => targets[k] !== false)
+      : Object.keys(targets).filter(k =>
+        targets[k] !== false)
     for (const item of list) {
       // pattern match by word and suffix checks
       if (id === item || id.startsWith(item)) {
@@ -99,9 +118,9 @@ export class Bundler {
     return false
   }
 
-  private createConfig(out: BundlerOutputOptions, input: BundlerInputOptions): MergedRollupOptions {
+  private createConfig (out: BundlerOutputOptions, input: BundlerInputOptions): MergedRollupOptions {
     const {
-      rootDir
+      rootDir,
     } = this.options
 
     const {
@@ -119,10 +138,12 @@ export class Bundler {
     // init plugins: merge with builtin and cleanup
     const inputPlugins = builtinPlugins
       .reduce((list, p) => {
-        if (p && !list.some(n => isString(n) ? n === p : n.name === p)) list.push(p)
+        if (p && !list.some(n =>
+          (isString(n) ? n === p : n.name === p))) list.push(p)
         return list
       }, [...(commonPlugins.length ? commonPlugins : zeroConfigPlugins)])
-      .map(p => initPlugin(p, pluginCtx))
+      .map(p =>
+        initPlugin(p, pluginCtx))
       .filter(Boolean)
 
     const inputOptions: InputOptions = {
@@ -143,10 +164,11 @@ export class Bundler {
       ...rest,
       globals,
       indent: '  ',
-      format: (modern ? 'es' : format) as ModuleFormat
+      format: (modern ? 'es' : format) as ModuleFormat,
     }
 
     // resolve output file with base dir
+    // eslint-disable-next-line semi-style
     ;['file', 'dir'].forEach(prop => {
       if (outputOptions[prop]) {
         outputOptions[prop] = resolve(rootDir, outputOptions[prop])
@@ -180,17 +202,19 @@ export class Bundler {
           ? p
           : typeof p === 'object' ? p.name : p
         // avoid duplicates plugins which in input.plugins already
-        if (name && !find(inputPlugins, (o) => o === p || name && (o === name || o.name === name))) {
+        if (name && !find(inputPlugins, (o) =>
+          o === p || (name && (o === name || o.name === name)))) {
           arr.push(p)
         }
         return arr
       }, [])
-      .map(p => initPlugin(p, pluginCtx))
+      .map(p =>
+        initPlugin(p, pluginCtx))
       .filter(Boolean)
 
     return {
       ...inputOptions,
-      output: [outputOptions]
+      output: [outputOptions],
     }
   }
 
@@ -203,7 +227,8 @@ export class Bundler {
       ...inputOptions
     } = entry
 
-    return asArray(output).map(o => this.createConfig(o, inputOptions))
+    return asArray(output).map(o =>
+      this.createConfig(o, inputOptions))
   }
 
   proxyExternal (externalImpl: BundlerEntry['external'], inputs: InputOptions): ExternalOption {
@@ -219,12 +244,15 @@ export class Bundler {
       ? defaultExternalFn
       : (
         isFunction(externalImpl)
-          ? (id, importer, isResolved) => externalImpl(id, importer, isResolved, () => defaultExternalFn(id, importer, isResolved))
+          ? (id, importer, isResolved) =>
+            externalImpl(id, importer, isResolved, () =>
+              defaultExternalFn(id, importer, isResolved))
           : externalImpl)
   }
 
-  getEntries() {
-    return this.options.entry.reduce<MergedRollupOptions[]>((p, o) => p.concat(this.normalizeEntry(o)), [])
+  getEntries () {
+    return this.options.entry.reduce<MergedRollupOptions[]>((p, o) =>
+      p.concat(this.normalizeEntry(o)), [])
   }
 
   buildEntry (entry: BundlerEntry) {
@@ -242,14 +270,19 @@ export class Bundler {
 
     return sequence(list, async ({ output, ...input }): Promise<RollupBuild> => {
       const start = Date.now()
-      const files = output.map((o) => relativeId(o.file || o.dir))
+      const files = output.map((o) =>
+        relativeId(o.file || o.dir))
 
-      stderr(cyan(`build ${bold(inputs.map(p => relativeId(p)).join(','))} \u2192 ${bold(files.join(', '))} ...`))
+      stderr(cyan(`build ${bold(inputs.map(p =>
+        relativeId(p)).join(','))} \u2192 ${bold(files.join(', '))} ...`))
       const bundle: RollupBuild = await rollup.rollup(input)
 
-      for (const o of output) {
+      for await (const o of output) {
         const out: RollupOutput = await bundle.write(o)
-        stderr(green(`created ${bold(relativeId(o.file || o.dir))} (${prettyBytes(out.output.filter(o => o.code).reduce((n, o) => n + o.code.length, 0))}) in ${bold(prettyMs(Date.now() - start))}`))
+        const total = out.output
+          .filter(o => o.code)
+          .reduce((n, o) => n + o.code.length, 0)
+        stderr(green(`created ${bold(relativeId(o.file || o.dir))} (${prettyBytes(total)}) in ${bold(prettyMs(Date.now() - start))}`))
       }
 
       return bundle
@@ -257,7 +290,8 @@ export class Bundler {
   }
 
   async build () {
-    return sequence(this.options.entry, o => this.buildEntry(o))
+    return sequence(this.options.entry, o =>
+      this.buildEntry(o))
   }
 
   async watch (options?: WatcherOptions) {

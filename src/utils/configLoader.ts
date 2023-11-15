@@ -1,5 +1,7 @@
 import { readFileSync, existsSync } from 'fs'
-import { resolve, basename, dirname, extname, parse } from 'path'
+import {
+  resolve, basename, dirname, extname, parse,
+} from 'path'
 
 interface ConfigLoaderOptions {
   files: string[];
@@ -36,12 +38,14 @@ export class ConfigLoader {
     cwd = process.cwd(),
     stopDir,
     packageKey,
-    parseJSON = JSON.parse
+    parseJSON = JSON.parse,
   }: Partial<ConfigLoaderOptions> = {}) {
     if (stopDir) {
       stopDir = resolve(stopDir)
     }
-    this.options = { files, cwd, stopDir, packageKey, parseJSON }
+    this.options = {
+      files, cwd, stopDir, packageKey, parseJSON,
+    }
   }
 
   addLoader (loader: ILoader) {
@@ -87,11 +91,10 @@ export class ConfigLoader {
     const { files, packageKey } = options
     for (const filename of files) {
       const file = resolve(currentDir, filename)
-      const exists =
-        // Disable cache in tests
-        process.env.NODE_ENV !== 'test' && this.existsCache.has(file)
-          ? this.existsCache.get(file)
-          : existsSync(file)
+      // Disable cache in tests
+      const exists = process.env.NODE_ENV !== 'test' && this.existsCache.has(file)
+        ? this.existsCache.get(file)
+        : existsSync(file)
 
       this.existsCache.set(file, exists)
 
@@ -123,9 +126,9 @@ export class ConfigLoader {
 
     // Don't traverse above the module root
     if (
-      nextDir === currentDir ||
-      currentDir === options.stopDir ||
-      basename(currentDir) === 'node_modules'
+      nextDir === currentDir
+      || currentDir === options.stopDir
+      || basename(currentDir) === 'node_modules'
     ) {
       return null
     }
@@ -151,7 +154,7 @@ export class ConfigLoader {
     if (loader) {
       return {
         path: filepath,
-        data: loader.load(filepath)
+        data: loader.load(filepath),
       }
     }
 
@@ -198,5 +201,5 @@ export class ConfigLoader {
 }
 
 export default new ConfigLoader({
-  stopDir: dirname(process.cwd())
+  stopDir: dirname(process.cwd()),
 })

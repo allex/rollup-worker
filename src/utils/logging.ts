@@ -1,10 +1,14 @@
 import { RollupError } from 'rollup'
-import { bold, cyan, dim, red } from '../utils/colors'
 
-import { relativeId } from './'
+import {
+  bold, cyan, dim, red,
+} from './colors'
+
+import { relativeId } from '.'
 
 // log to stderr to keep `rollup main.js > bundle.js` from breaking
-export const stderr = (...args: readonly unknown[]) => process.stderr.write(`${args.join('')}\n`)
+export const stderr = (...args: readonly unknown[]) =>
+  process.stderr.write(`${args.join('')}\n`)
 
 export function handleError (err: RollupError, recover = false): void {
   let description = err.message || err

@@ -1,4 +1,6 @@
-import { get, hasOwn, isArray, isFunction, isString, merge } from '@fdio/utils'
+import {
+  get, hasOwn, isArray, isFunction, isString, merge,
+} from '@fdio/utils'
 import { Plugin, PluginImpl } from 'rollup'
 
 import { loadModule, result } from '../utils'
@@ -11,7 +13,8 @@ type PluginDefinition = PluginImpl | Plugin
 type PluginSpec = PluginName | PluginDefinition | [string, PluginDefinition]
 
 const isRollupPluginDefine = (o: any): o is PluginImpl =>
-  typeof o === 'function' && !(['resolveId', 'transform', 'load', 'renderChunk'].some(k => !!o[k]))
+  typeof o === 'function' && !(['resolveId', 'transform', 'load', 'renderChunk'].some(k =>
+    !!o[k]))
 
 const importPlugin = (name: string): PluginImpl | null => {
   let p: PluginImpl
@@ -75,7 +78,8 @@ export const getPluginCtor = (p: PluginSpec, cfg?: any): PluginDefinition => {
       : p
   ) as PluginDefinition
   if (cfg && isRollupPluginDefine(ctor)) {
-    return (options): Plugin => ctor(merge({}, cfg, options))
+    return (options): Plugin =>
+      ctor(merge({}, cfg, options))
   }
   return ctor
 }
@@ -89,7 +93,7 @@ export const initPlugin = (p: PluginSpec, ctx?: PluginContext): Plugin => {
     name = p as string
     p = null
   } else if (isArray(p)) {
-    [ name, p ] = p // [ name, constructor ]
+    [name, p] = p // [ name, constructor ]
   }
 
   const cfg = isString(name) ? getPluginOptions(name, ctx) : null

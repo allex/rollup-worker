@@ -30,7 +30,7 @@ export default function fastRestTransform ({ template, types: t }) {
       if (path.key) args.push(t.numericLiteral(path.key))
       const sliced = t.callExpression(
         t.memberExpression(t.clone(slice), t.identifier('call')),
-        args
+        args,
       )
 
       const ident = path.node.argument
@@ -44,23 +44,23 @@ export default function fastRestTransform ({ template, types: t }) {
         }
 
         if (
-          binding.constant &&
-          binding.referencePaths.length === 1 &&
-          sameArgumentsObject(binding.referencePaths[0], func, t)
+          binding.constant
+          && binding.referencePaths.length === 1
+          && sameArgumentsObject(binding.referencePaths[0], func, t)
         ) {
           // one usage, never assigned - replace usage inline
           binding.referencePaths[0].replaceWith(sliced)
         } else {
           // unknown usage, create a binding
           const decl = t.variableDeclaration('var', [
-            t.variableDeclarator(t.clone(ident), sliced)
+            t.variableDeclarator(t.clone(ident), sliced),
           ])
           func.get('body').unshiftContainer('body', decl)
         }
       }
 
       path.remove()
-    }
+    },
   }
 
   return {
@@ -88,8 +88,8 @@ export default function fastRestTransform ({ template, types: t }) {
           t.addComment(helper.declarations[0].init, 'leading', '#__PURE__')
           path.unshiftContainer('body', helper)
         }
-      }
-    }
+      },
+    },
   }
 }
 
