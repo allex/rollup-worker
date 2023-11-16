@@ -38,7 +38,6 @@ import { BatchWarnings } from './utils/batchWarnings'
 import { printTimings } from './utils/timings'
 
 export { version } from '../package.json'
-export { loadConfigFile } from './loadConfigFile'
 
 declare module 'rollup' {
   interface InputOptions {

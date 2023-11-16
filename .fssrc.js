@@ -26,7 +26,17 @@ const progress = () => {
 
 export default {
   destDir: './',
-  dependencies: Object.keys(dependencies).concat([ 'fs', 'path', 'module', 'events', 'assert', 'os', 'util', 'rollup-worker' ]),
+  dependencies: Object.keys(dependencies).concat([
+    'fs',
+    'path',
+    'os',
+    'events',
+    'util',
+    'assert',
+    'process',
+    'url',
+    'child_process'
+  ]),
   compress: process.env.NODE_ENV !== 'development',
   entry: [
     {
