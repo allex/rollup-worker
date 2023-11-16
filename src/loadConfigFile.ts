@@ -4,7 +4,7 @@ import { pathToFileURL } from 'url'
 import rollup, { Plugin, RollupOptions } from 'rollup'
 
 import {
-  BundlerOptions, GenericConfigObject, NormalizedBundlerOptions, RawOutputOptions,
+  BundlerOptions, BundlerOutputOptions, GenericConfigObject, NormalizedBundlerOptions,
 } from './types'
 import { asArray, relativeId } from './utils'
 import batchWarnings, { BatchWarnings } from './utils/batchWarnings'
@@ -37,7 +37,7 @@ const transformFromRollupConfig = (cfg: Many<RollupOptions>): NormalizedBundlerO
       return list
     }, [])
     if (output) {
-      entry.push({ ...inputs, plugins, output: asArray(output) as RawOutputOptions[] })
+      entry.push({ ...inputs, plugins, output: asArray(output) as BundlerOutputOptions[] })
     } else {
       entry.push({ ...inputs, plugins, output: [] })
     }

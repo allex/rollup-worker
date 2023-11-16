@@ -105,11 +105,11 @@ Usage: rb [-w] [--config | -c] <config_file.js>
     await watch(configFile, commandOptions)
   } else {
     // build
-    const { options } = await loadAndParseConfigFile(configFile, commandOptions)
+    const { options, warnings } = await loadAndParseConfigFile(configFile, commandOptions)
     if (commandOptions.minimize !== undefined) {
       options.minimize = commandOptions.minimize
     }
-    await build(options)
+    await build(options, warnings)
   }
 }
 

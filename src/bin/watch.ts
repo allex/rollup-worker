@@ -15,8 +15,8 @@ import {
 import { handleError, stderr } from '../utils/logging'
 import { NormalizedBundlerOptions } from '../types'
 import { loadAndParseConfigFile } from '../loadConfigFile'
+import { printTimings } from '../utils/timings'
 
-import { printTimings } from './timings'
 import { createWatchHooks } from './watchHooks'
 import { getResetScreen } from './resetScreen'
 

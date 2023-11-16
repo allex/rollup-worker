@@ -23,7 +23,8 @@
     "lint:fix": "eslint . --ext ts --fix",
     "build": "rb -c && chmod a+x bin/cli.js",
     "watch": "export NODE_ENV='development' && rb -c -w",
-    "test": "npm run lint"
+    "test": "npm run lint",
+    "postinstall": "scripts/postinstall"
   },
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
   "license": "MIT",

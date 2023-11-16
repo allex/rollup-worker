@@ -27,7 +27,7 @@ interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'>
   globals?: GlobalsOption;
 }
 
-interface BundlerOutputOptions extends OutputOptions {
+interface BundlerOutputOptions extends Omit<OutputOptions, 'plugins'> {
   plugins?: (PluginName | Plugin)[];
   output?: Array<OutputOptions & { plugins: (PluginName | Plugin)[]; }>
 }

@@ -1,7 +1,7 @@
 import prettyBytes from 'pretty-bytes'
 import { SerializedTimings } from 'rollup'
 
-import { bold, underline } from '../utils/colors'
+import { bold, underline } from './colors'
 
 export function printTimings (timings: SerializedTimings): void {
   Object.entries(timings).forEach(([label, [time, memory, total]]) => {

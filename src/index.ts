@@ -10,8 +10,7 @@
 import { basename, resolve } from 'path'
 
 import Debug from 'debug'
-import prettyBytes from 'pretty-bytes'
-import prettyMs from 'pretty-ms'
+import ms from 'pretty-ms'
 import rollup, {
   ExternalOption,
   InputOptions,
@@ -20,7 +19,6 @@ import rollup, {
   ModuleFormat,
   OutputOptions,
   RollupBuild,
-  RollupOutput,
   RollupWatchOptions,
   WatcherOptions,
 } from 'rollup'
@@ -36,6 +34,8 @@ import configLoader from './utils/configLoader'
 import {
   BundlerEntry, BundlerInputOptions, BundlerOutputOptions, NormalizedBundlerOptions,
 } from './types'
+import { BatchWarnings } from './utils/batchWarnings'
+import { printTimings } from './utils/timings'
 
 export { version } from '../package.json'
 export { loadConfigFile } from './loadConfigFile'
@@ -255,7 +255,7 @@ export class Bundler {
       p.concat(this.normalizeEntry(o)), [])
   }
 
-  buildEntry (entry: BundlerEntry) {
+  private buildEntry (entry: BundlerEntry, warnings: BatchWarnings, silent = false): Promise<void> {
     const list = this.normalizeEntry(entry)
 
     debug('normalized entries: \n%O', list)
@@ -267,31 +267,46 @@ export class Bundler {
     } else {
       inputs = asArray(input as Many<string>)
     }
+    const files = entry.output.map(o => {
+      const dst = (o.file ?? o.dir) || ''
+      return relativeId(dst)
+    })
 
-    return sequence(list, async ({ output, ...input }): Promise<RollupBuild> => {
-      const start = Date.now()
-      const files = output.map((o) =>
-        relativeId(o.file || o.dir))
-
+    if (!silent) {
       stderr(cyan(`build ${bold(inputs.map(p =>
         relativeId(p)).join(','))} \u2192 ${bold(files.join(', '))} ...`))
-      const bundle: RollupBuild = await rollup.rollup(input)
+    }
 
-      for await (const o of output) {
-        const out: RollupOutput = await bundle.write(o)
-        const total = out.output
-          .filter(o => o.code)
-          .reduce((n, o) => n + o.code.length, 0)
-        stderr(green(`created ${bold(relativeId(o.file || o.dir))} (${prettyBytes(total)}) in ${bold(prettyMs(Date.now() - start))}`))
+    return sequence(list, async (inputOptions): Promise<void> => {
+      const outputOptions = inputOptions.output
+      if (!outputOptions.length) {
+        throw new Error('invalid rollup config, output cannot be nil')
       }
 
-      return bundle
+      const start = Date.now()
+      const bundle: RollupBuild = await rollup.rollup(inputOptions)
+
+      for await (const output of outputOptions) {
+        const { output: out } = await bundle.write(output)
+        if (!silent) {
+          const files = out
+            .filter(o => o.type === 'chunk')
+            .map(o => relativeId(o.fileName))
+          warnings.flush()
+          stderr(green(`created ${bold(files.join(', '))} in ${bold(ms(Date.now() - start))}`))
+          if (bundle && bundle.getTimings) {
+            printTimings(bundle.getTimings())
+          }
+        }
+      }
+
+      await bundle.close()
     })
   }
 
-  async build () {
+  async build (warnings: BatchWarnings) {
     return sequence(this.options.entry, o =>
-      this.buildEntry(o))
+      this.buildEntry(o, warnings))
   }
 
   async watch (options?: WatcherOptions) {

@@ -1,0 +1,3 @@
+#!/bin/sh
+sed -i 's/"    "/"\\t"/g' node_modules/typescript/lib/typescript.js
+echo "Postinstall Done."
