@@ -19,16 +19,10 @@ import { PluginContext } from '../types'
 // Extensions to use when resolving modules
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.es6', '.es', '.mjs']
 
-type PluginOptionsResolver = (options: Kv, ctx: PluginContext) => unknown
+type PluginOptionsResolver = (options: Kv, ctx?: PluginContext) => unknown
 
-const findTsConfig = (
-  entryFile: string,
-  {
-    cwd = dirname(entryFile),
-    stopDir = process.cwd(),
-  }: Dictionary<'cwd' | 'stopDir', string> = {},
-) =>
-  configLoader.resolve({ cwd, stopDir, files: ['tsconfig.json'] })
+const findTsConfig = ({ cwd, stopDir }: Dictionary<'cwd' | 'stopDir', string> = {}) =>
+  configLoader.resolve({ cwd, stopDir: stopDir || process.cwd(), files: ['tsconfig.json'] })
 
 // Provide default options for builtin plugins
 
@@ -55,7 +49,8 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
 
   // For internal custom babel configs
   // https://github.com/rollup/plugins/tree/master/packages/babel#options
-  babel (o, { input, output, options }) {
+  babel (o, ctx) {
+    const { input, output, options } = ctx ?? {}
     const {
       defines = {},
     } = options
@@ -82,7 +77,8 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
     }, o)
   },
 
-  commonjs (o, { options }) {
+  commonjs (o, ctx) {
+    const { options } = ctx ?? {}
     return {
       extensions: EXTENSIONS,
       sourcemap: options.sourcemap,
@@ -90,21 +86,23 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
     }
   },
 
-  typescript (o, { input, options }) {
+  typescript (o, ctx) {
+    const { input, options } = ctx ?? {}
     const spec = merge({
       compilerOptions: {
-        sourceMap: options.sourcemap,
+        sourceMap: options?.sourcemap,
         target: 'esnext',
         newLine: 'lf',
       },
     }, o)
-    if (options.autoTsconfig && !o.tsconfig && typeof input === 'string') {
-      o.tsconfig = findTsConfig(input)
+    if (options?.autoTsconfig && !o.tsconfig && typeof input === 'string') {
+      o.tsconfig = findTsConfig({ cwd: dirname(input) })
     }
     return spec
   },
 
-  globals (o, { output: { format } }) {
+  globals (o, ctx) {
+    const { output: { format } } = ctx ?? {}
     return {
       ...(
         ['es', 'cjs'].includes(format) ? {
@@ -125,7 +123,8 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
     }, o)
   },
 
-  minimize (o, { output: { format } }) {
+  minimize (o, ctx) {
+    const { output: { format } } = ctx ?? {}
     const modern = (format as string) === 'modern'
     return {
       implementation: require('@rollup/plugin-terser'),
@@ -146,7 +145,8 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
     }
   },
 
-  postcss (o, { options }) {
+  postcss (o, ctx) {
+    const { options } = ctx ?? {}
     return merge({
       plugins: [
         autoprefixer(),

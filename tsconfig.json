@@ -3,6 +3,7 @@
     "target": "es6",
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
+    "removeComments": true,
     "diagnostics": false,
     "downlevelIteration": false,
     "lib": ["es5", "es6", "dom"],
@@ -21,11 +22,10 @@
   "include": [
     "typings/**/*.d.ts",
     "src",
-    "bin",
-    "browser"
+    ".fssrc.ts"
   ],
   "exclude": [
-    "dist",
+    "lib",
     "node_modules",
     "test/typescript"
   ]

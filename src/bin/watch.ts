@@ -101,12 +101,16 @@ export async function watch (configFile: string, command: Kv): Promise<void> {
           if (!silent) {
             let input = event.input
             if (typeof input !== 'string') {
-              input = Array.isArray(input)
-                ? input.join(', ')
-                : Object.values(input as Record<string, string>).join(', ')
+              input = (
+                Array.isArray(input)
+                  ? input
+                  : Object.values(input as Record<string, string>)
+              ).map(relativeId).join(', ')
+            } else {
+              input = relativeId(input)
             }
             stderr(
-              cyan(`bundles ${bold(input)} → ${bold(event.output.map(relativeId).join(', '))}...`),
+              cyan(`bundles ${bold(input)} → ${bold(event.output.map(relativeId).join(', '))} ...`),
             )
           }
           runWatchHook('onBundleStart')

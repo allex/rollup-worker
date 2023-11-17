@@ -1,4 +1,3 @@
-import { resolve } from 'path'
 import fs from 'fs'
 
 import Debug from 'debug'
@@ -10,6 +9,7 @@ import { version } from '../index'
 
 import { watch } from './watch'
 import build from './build'
+import { getConfigPath } from './getConfigPath'
 
 const HELP_FLG_OK = 0x1
 const HELP_FLG_ERR = 0x2
@@ -18,6 +18,10 @@ interface CommandOptions extends Kv {
   minimize?: boolean;
   watchMode?: boolean;
   showHelp?: number;
+  /**
+   * `true` means auto detect fssrc configs
+   */
+  config: true | string;
 }
 
 const debug = Debug('rollup-worker:cli')
@@ -29,7 +33,7 @@ Usage:
  rb <options> <parameters>
 
 Options:
- -c, --config <config_file>   the bundler bootstrap config file. (default to .fssrc.js)
+ -c, --config <config_file>   the bundler config file. (default to .fssrc.ts, .fssrc.js)
  -w, --watch                  watch mode
 
  -v, --version                show version
@@ -38,11 +42,10 @@ Options:
 }
 
 const runCli = async (): Promise<void> => {
-  let configFile = resolve(process.cwd(), '.fssrc.js')
-
   const argv = process.argv.slice(2)
   const commandOptions: CommandOptions = {
     showHelp: 0,
+    config: true,
   }
 
   const aliases = {
@@ -55,7 +58,7 @@ const runCli = async (): Promise<void> => {
   // parse command args
   while (argv.length) {
     let k: string = argv.shift()
-    let v: any = argv[0] || ''
+    let v: string = argv[0] || ''
 
     // keep any remaining arguments to the positional parameters
     if (k === '--') {
@@ -90,7 +93,7 @@ const runCli = async (): Promise<void> => {
         break
       case 'config':
         if (v) {
-          configFile = resolve(process.cwd(), v)
+          commandOptions.configFile = v
         }
         break
       case 'compress':
@@ -98,7 +101,7 @@ const runCli = async (): Promise<void> => {
         commandOptions.minimize = parseBoolValue(v, true)
         break
       case 'watch':
-        commandOptions.watchMode = v === '' ? true : v
+        commandOptions.watchMode = v === '' ? true : parseBoolValue(v)
         break
       case 'help':
         commandOptions.showHelp |= HELP_FLG_OK
@@ -114,6 +117,12 @@ const runCli = async (): Promise<void> => {
     process.exit(commandOptions.showHelp & HELP_FLG_ERR)
   }
 
+  debug('command options: %O', commandOptions)
+
+  const configFile = await getConfigPath(commandOptions.config)
+
+  debug('config: %s', configFile)
+
   if (!configFile || !fs.existsSync(configFile)) {
     let msg: string
     if (!configFile) {
@@ -123,8 +132,6 @@ const runCli = async (): Promise<void> => {
     }
     handleError(new Error(msg))
   }
-
-  debug('command options: %O', commandOptions)
 
   if (commandOptions.watchMode) {
     // watch

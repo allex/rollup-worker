@@ -4,18 +4,26 @@ import {
 import { Plugin, PluginImpl } from 'rollup'
 
 import { loadModule, result } from '../utils'
-import { PluginContext, PluginName } from '../types'
+import {
+  GenericPluginOptions, PluginContext, PluginName, PluginWithOptions,
+} from '../types'
 
 import { builtinPlugins } from './builtin-plugins'
 import { getMergedOptions } from './default-options'
 
 type PluginDefinition = PluginImpl | Plugin
-type PluginSpec = PluginName | PluginDefinition | [string, PluginDefinition]
+type PluginSpec = PluginName | PluginDefinition | PluginWithOptions
 
-const isRollupPluginDefine = (o: any): o is PluginImpl =>
+const isRollupPluginCtor = (o: any): o is PluginImpl =>
   typeof o === 'function' && !(['resolveId', 'transform', 'load', 'renderChunk'].some(k =>
     !!o[k]))
 
+/**
+ * Load rollup plugin implemention, aka plugin constructor
+ *
+ * @param name plugin name
+ * @returns PluginImpl
+ */
 const importPlugin = (name: string): PluginImpl | null => {
   let p: PluginImpl
   const tryNames: string[] = /\bplugin-/.test(name)
@@ -28,7 +36,9 @@ const importPlugin = (name: string): PluginImpl | null => {
       p = loadModule(n)
       break
     } catch (e) {
-      if (i === l) { throw e }
+      if (i === l) {
+        throw new Error(`Cannot load plugin "${name}": ${e.message}.`)
+      }
     }
   }
 
@@ -71,34 +81,45 @@ const getPluginOptions = (name: string, ctx?: PluginContext) => {
 /**
  * Get plugin constructor by name
  */
-export const getPluginCtor = (p: PluginSpec, cfg?: any): PluginDefinition => {
-  const ctor = (
-    isString(p)
-      ? loadPlugin(p)
-      : p
-  ) as PluginDefinition
-  if (cfg && isRollupPluginDefine(ctor)) {
-    return (options): Plugin =>
-      ctor(merge({}, cfg, options))
+export const getPluginCtor = (spec: PluginSpec, defaultOptions?: Record<string, unknown>): PluginDefinition => {
+  let p: string | Plugin | PluginImpl
+
+  // plugin with default options
+  if (isArray(spec)) {
+    p = spec[0]
+    defaultOptions = defaultOptions ?? spec[1]
+  } else {
+    p = spec
   }
+
+  const ctor = isString(p) ? loadPlugin(p) : p
+  if (defaultOptions && isRollupPluginCtor(ctor)) {
+    return (options): Plugin =>
+      ctor(merge({}, defaultOptions, options))
+  }
+
   return ctor
 }
 
 /**
- * Construct plugin by name (with rollup options)
+ * Construct plugin by name
  */
 export const initPlugin = (p: PluginSpec, ctx?: PluginContext): Plugin => {
   let name: string = ''
-  if (isString(p)) {
-    name = p as string
-    p = null
-  } else if (isArray(p)) {
-    [name, p] = p // [ name, constructor ]
+  let pluginOptions: GenericPluginOptions = {}
+
+  if (isArray(p)) { // PluginWithOptions
+    [p, pluginOptions] = p
   }
 
-  const cfg = isString(name) ? getPluginOptions(name, ctx) : null
-  const plugin = getPluginCtor(p || name, cfg)
+  if (isString(p)) {
+    name = p
+    p = null
+  }
 
-  // ensure returns plugin instance
-  return result(plugin, {})
+  if (isString(name)) {
+    pluginOptions = merge({}, pluginOptions, getPluginOptions(name, ctx))
+  }
+
+  return result(getPluginCtor(p || name, pluginOptions), {})
 }

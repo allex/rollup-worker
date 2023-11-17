@@ -11,6 +11,7 @@ import batchWarnings, { BatchWarnings } from './utils/batchWarnings'
 import { stderr } from './utils/logging'
 import { bold } from './utils/colors'
 import { error } from './utils/error'
+import { initPlugin } from './plugins/plugin-loader'
 
 interface NodeModuleWithCompile extends NodeModule {
   _compile(code: string, filename: string): any;
@@ -95,13 +96,16 @@ async function getDefaultFromTranspiledConfigFile (
   commandOptions: Kv,
 ): Promise<unknown> {
   const warnings = batchWarnings()
-  const inputOptions = {
+  const inputOptions: RollupOptions = {
     external: (id: string) =>
       (id[0] !== '.' && !isAbsolute(id)) || id.slice(-5, id.length) === '.json',
     input: fileName,
     onwarn: warnings.add,
     plugins: [],
     treeshake: false,
+  }
+  if (extname(fileName) === '.ts') {
+    inputOptions.plugins.push(initPlugin('typescript'))
   }
   const bundle = await rollup.rollup(inputOptions)
   if (!commandOptions.silent && warnings.count > 0) {

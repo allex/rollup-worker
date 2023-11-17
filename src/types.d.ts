@@ -1,5 +1,5 @@
 import {
-  Plugin, ExternalOption, GlobalsOption, InputOption, InputOptions, OutputOptions,
+  ExternalOption, GlobalsOption, InputOption, InputOptions, OutputOptions, OutputPlugin, PluginHooks, PluginImpl,
 } from 'rollup'
 
 interface GenericConfigObject {
@@ -8,7 +8,14 @@ interface GenericConfigObject {
 
 type RollupExternalPredicate = (source: string, importer: string | undefined, isResolved: boolean) => boolean | null | void;
 
+interface Plugin extends OutputPlugin, Partial<PluginHooks> {
+  // for inter-plugin communication
+  api?: any;
+}
+
 type PluginName = string
+
+type GenericPluginOptions = Record<string, unknown>
 
 type BundlerExternalFunc = (
   id: string,
@@ -16,6 +23,13 @@ type BundlerExternalFunc = (
   isResolved: boolean,
   extra: () => boolean | { defaultFn?: () => boolean; format: string; }
 ) => boolean | null | void
+
+type PluginWithOptions = [
+  /** plugin name or plugin instance */
+  PluginName | Plugin | PluginImpl,
+  /** plugin options */
+  GenericPluginOptions
+]
 
 interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'> {
   /* @override add support with plugin id list */
@@ -28,15 +42,21 @@ interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'>
 }
 
 interface BundlerOutputOptions extends Omit<OutputOptions, 'plugins'> {
-  plugins?: (PluginName | Plugin)[];
-  output?: Array<OutputOptions & { plugins: (PluginName | Plugin)[]; }>
+  plugins?: (PluginName | Plugin | PluginImpl | PluginWithOptions)[];
+  /**
+   * Turn on/off minimize plugin or shortcut config for minimize plugin options:
+   * ```
+   * [1, { format: { beautify: true }, ... }]
+   * ```
+   */
+  minimize?: boolean | [0 | 1, GenericPluginOptions];
 }
 
 interface BundlerEntry extends BundlerInputOptions {
   output: BundlerOutputOptions[];
 }
 
-type PluginOptions<T = Record<string, any>> = {
+type PluginOptions<T = GenericPluginOptions> = {
   [plugin: string]: T | (() => T)
 }
 
@@ -61,7 +81,16 @@ interface BundlerOptions {
 
   // common plugin options
   plugins?: PluginOptions;
-  dependencies?: Kv;
+
+  /**
+   * default whitlist for external iniital
+   */
+  dependencies?: string[] | Kv;
+
+  /**
+   * Parse <project>/package.json #dependencies, #peerDependencies as external, defaults to `true`
+   */
+  parsePackageDepsAsExternal?: boolean;
 
   /** @deprecated Use `minimize` instead */
   compress?: boolean;

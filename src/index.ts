@@ -18,6 +18,7 @@ import rollup, {
   MergedRollupOptions,
   ModuleFormat,
   OutputOptions,
+  Plugin,
   RollupBuild,
   RollupWatchOptions,
   WatcherOptions,
@@ -41,16 +42,13 @@ export { version } from '../package.json'
 
 declare module 'rollup' {
   interface InputOptions {
-    dependencies?: string[];
-  }
-  interface OutputOptions {
-    minimize?: boolean;
+    dependencies?: string[] | Kv;
   }
 }
 
 type NpmPackage = Record<'dependencies' | 'devDependencies' | 'peerDependencies', Kv<string>>
 
-const debug = Debug('rollup-worker:bundler')
+const debug = Debug('rollup-worker:lib/bundler')
 
 // default plugins (for zero config)
 const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
@@ -59,7 +57,12 @@ const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
 const builtinPlugins = ['json', 'replace']
 
 export class Bundler {
-  options: NormalizedBundlerOptions
+  #options: NormalizedBundlerOptions
+
+  /**
+   * Internal directory for external predicate
+   */
+  #externalMap: Map<string, boolean>
 
   /**
    * Multi-entry config for rollup bundle
@@ -82,14 +85,24 @@ export class Bundler {
   }
 
   private init (opts: NormalizedBundlerOptions) {
-    const options = { ...opts }
+    const {
+      dependencies = [],
+      ...options
+    } = opts
+
+    this.#externalMap = new Map<string, boolean>(
+      isArray(dependencies)
+        ? dependencies.map(k => [k, true])
+        : Object.keys(dependencies).map(k => [k, !!dependencies[k]]),
+    )
 
     // resolve project package.json
     const pkg = configLoader.load<NpmPackage>({ files: ['package.json'], cwd: options.rootDir })
 
-    // Auto detect [vue, react] by parse package dependencies
     if (pkg?.data) {
-      const { dependencies, devDependencies } = pkg.data
+      const { dependencies, devDependencies, peerDependencies } = pkg.data
+
+      // Auto detect [vue, react] by parse package dependencies
       const deps = Object.keys({ ...dependencies, ...devDependencies })
         ;['vue', 'react'].forEach(k => {
         if (!options[k] == null) {
@@ -97,13 +110,25 @@ export class Bundler {
             new RegExp(`\b${k}\b`).test(k))
         }
       })
+
+      // build external indexes with addition auto parse project package.json dependencies
+      if (options.parsePackageDepsAsExternal !== false) {
+        Object.keys({ ...dependencies, ...peerDependencies }).forEach(k => {
+          this.#externalMap.set(k, true)
+        })
+      }
     }
 
-    this.options = options
+    this.#options = options
   }
 
   private checkExternal (id: string, input: InputOptions) {
-    const targets = input.dependencies || this.options.dependencies || []
+    const moduleKey = id.split('/').slice(0, id[0] === '@' ? 2 : 1).join('/')
+    if (this.#externalMap.get(moduleKey)) {
+      return true
+    }
+
+    const targets = input.dependencies || []
     const list = isArray(targets)
       ? targets
       : Object.keys(targets).filter(k =>
@@ -114,13 +139,14 @@ export class Bundler {
         return true
       }
     }
+
     return false
   }
 
   private createConfig (out: BundlerOutputOptions, input: BundlerInputOptions): MergedRollupOptions {
     const {
       rootDir,
-    } = this.options
+    } = this.#options
 
     const {
       globals,
@@ -132,7 +158,7 @@ export class Bundler {
     const format: string = out.format
     const modern = format === 'modern'
 
-    const pluginCtx = { input: input.input, output: out, options: this.options }
+    const pluginCtx = { input: input.input, output: out, options: this.#options }
 
     // init plugins: merge with builtin and cleanup
     const inputPlugins = builtinPlugins
@@ -175,14 +201,14 @@ export class Bundler {
     })
 
     // default to compress (except as configure this option explicitly)
-    let enableMinimize = this.options.compress !== false
-      && this.options.minimize !== false
+    let enableMinimize = this.#options.compress !== false
+      && this.#options.minimize !== false
 
     const { file } = outputOptions
     if (file) {
       // enable minimize by the default
       if (minimize !== undefined) {
-        enableMinimize = !!minimize
+        enableMinimize = !!(isArray(minimize) ? minimize[0] : minimize)
       } else if (/\.min\./.test(basename(file))) {
         // enable minimize when out file suffixed `*.min.*` pattern
         enableMinimize = true
@@ -191,20 +217,31 @@ export class Bundler {
 
     // Add compress based on terser
     if (enableMinimize) {
-      outputPlugins.push('minimize')
+      outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : null])
     }
 
-    // init output plugins, exclude plugins in inputs
+    // parse and init output plugins, exclude plugins in inputs
+    // ```
+    // [
+    //   'typescript',
+    //   require('@rollup/plugin-typescript')
+    //   ['typescript', { tsconfig: './src/tsconfig.json'} ]
+    // ]
+    // ```
     outputOptions.plugins = outputPlugins
       .reduce((arr, p) => {
         const name = isString(p)
           ? p
-          : typeof p === 'object' ? p.name : p
+          : isArray(p) // PluginWithOptions
+            ? p[0]
+            : isObject(p) && p.name
+              ? p.name : p
+
         // avoid duplicates plugins which in input.plugins already
-        if (name && !find(inputPlugins, (o) =>
-          o === p || (name && (o === name || o.name === name)))) {
-          arr.push(p)
+        if (name && !find(inputPlugins, (o: Plugin) => o === p || (name && (o === name || o.name === name)))) {
+          arr.push(initPlugin(p, pluginCtx))
         }
+
         return arr
       }, [])
       .map(p =>
@@ -230,7 +267,7 @@ export class Bundler {
       this.createConfig(o, inputOptions))
   }
 
-  proxyExternal (externalImpl: BundlerEntry['external'], inputs: InputOptions): ExternalOption {
+  private proxyExternal (externalImpl: BundlerEntry['external'], inputs: InputOptions): ExternalOption {
     // default external func
     const defaultExternalFn: IsExternal = (id, _importer, isResolved) => {
       if (isResolved || id === 'babel-plugin-transform-async-to-promises/helpers') {
@@ -250,7 +287,7 @@ export class Bundler {
   }
 
   getEntries () {
-    return this.options.entry.reduce<MergedRollupOptions[]>((p, o) =>
+    return this.#options.entry.reduce<MergedRollupOptions[]>((p, o) =>
       p.concat(this.normalizeEntry(o)), [])
   }
 
@@ -272,8 +309,10 @@ export class Bundler {
     })
 
     if (!silent) {
-      stderr(cyan(`build ${bold(inputs.map(p =>
-        relativeId(p)).join(','))} \u2192 ${bold(files.join(', '))} ...`))
+      stderr(
+        cyan(`bundles ${bold(inputs.map(p =>
+          relativeId(p)).join(','))} → ${bold(files.join(', '))} ...`),
+      )
     }
 
     return sequence(list, async (inputOptions): Promise<void> => {
@@ -304,14 +343,14 @@ export class Bundler {
   }
 
   async build (warnings: BatchWarnings) {
-    return sequence(this.options.entry, o =>
+    return sequence(this.#options.entry, o =>
       this.buildEntry(o, warnings))
   }
 
   async watch (options?: WatcherOptions) {
     const watchOptions: RollupWatchOptions[] = []
 
-    this.options.entry.forEach(entry => {
+    this.#options.entry.forEach(entry => {
       const list = this.normalizeEntry(entry)
       list.forEach(input => {
         watchOptions.push({ watch: options, ...input })
