@@ -33,7 +33,7 @@ type PluginWithOptions = [
 
 interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'> {
   /* @override add support with plugin id list */
-  plugins?: (PluginName | Plugin)[];
+  plugins?: (PluginName | Plugin | PluginImpl | PluginWithOptions)[];
 
   /* @override with BundlerExternalFunc support */
   external?: ExternalOption | BundlerExternalFunc;
@@ -92,8 +92,9 @@ interface BundlerOptions {
    */
   parsePackageDepsAsExternal?: boolean;
 
-  /** @deprecated Use `minimize` instead */
-  compress?: boolean;
+  /**
+   * Enable minimize plugin for compress js
+   */
   minimize?: boolean;
 
   sourcemap?: boolean;

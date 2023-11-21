@@ -64,7 +64,7 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
       custom: {
         defines,
         modern,
-        compress: !!options.compress,
+        compress: !!options.minimize,
         sourcemap: options.sourcemap,
         targets: options.target === 'node' ? { node: '8' } : undefined,
         pragma: options.jsx || 'h',
@@ -124,10 +124,26 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
   },
 
   minimize (o, ctx) {
-    const { output: { format } } = ctx ?? {}
+    const {
+      output: { format },
+    } = ctx ?? {}
+
+    const { implementation, options, ...rest } = o
+
+    let pluginOpts = {}
+    if (Object.keys(rest).length > 0) {
+      if (options) {
+        throw new Error('get an confusions plugin options (name="minimize")')
+      }
+      pluginOpts = rest
+    } else {
+      pluginOpts = options
+    }
+
     const modern = (format as string) === 'modern'
+
     return {
-      implementation: require('@rollup/plugin-terser'),
+      implementation: implementation ?? require('@rollup/plugin-terser'),
       // options for rollup-plugin-terser <https://github.com/terser/terser>
       options: merge({
         ie8: true,
@@ -141,7 +157,7 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
         module: modern || format === 'cjs' || format === 'es',
         ecma: modern ? 2017 : 5,
         toplevel: modern || format === 'cjs' || format === 'es',
-      }, o),
+      }, pluginOpts),
     }
   },
 
@@ -162,7 +178,7 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
   },
 }
 
-export const getMergedOptions = <T> (name: string, o: Kv, context: PluginContext): T => {
+export const normalizePluginOptions = <T> (name: string, o: Kv, context: PluginContext): T => {
   const func = defaultPluginOpts[name]
   if (func) {
     return func(o, context) as T

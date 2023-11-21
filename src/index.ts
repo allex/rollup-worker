@@ -19,12 +19,13 @@ import rollup, {
   ModuleFormat,
   OutputOptions,
   Plugin,
+  PluginImpl,
   RollupBuild,
   RollupWatchOptions,
   WatcherOptions,
 } from 'rollup'
 import {
-  find, isArray, isFunction, isObject, isString, sequence,
+  find, isArray, isFunction, isObject, isString, remove, sequence,
 } from '@fdio/utils'
 
 import { initPlugin } from './plugins/plugin-loader'
@@ -33,7 +34,7 @@ import { stderr } from './utils/logging'
 import { bold, cyan, green } from './utils/colors'
 import configLoader from './utils/configLoader'
 import {
-  BundlerEntry, BundlerInputOptions, BundlerOutputOptions, NormalizedBundlerOptions,
+  BundlerEntry, BundlerInputOptions, BundlerOutputOptions, NormalizedBundlerOptions, PluginWithOptions,
 } from './types'
 import { BatchWarnings } from './utils/batchWarnings'
 import { printTimings } from './utils/timings'
@@ -55,6 +56,16 @@ const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
 
 // some builtin plugins
 const builtinPlugins = ['json', 'replace']
+
+const getPluginName = (p: string | Plugin | PluginImpl | PluginWithOptions): string | undefined => {
+  const name = isString(p)
+    ? p
+    : isArray(p) // PluginWithOptions
+      ? getPluginName(p[0])
+      : isObject(p) && p.name
+        ? p.name : undefined
+  return name
+}
 
 export class Bundler {
   #options: NormalizedBundlerOptions
@@ -162,9 +173,8 @@ export class Bundler {
 
     // init plugins: merge with builtin and cleanup
     const inputPlugins = builtinPlugins
-      .reduce((list, p) => {
-        if (p && !list.some(n =>
-          (isString(n) ? n === p : n.name === p))) list.push(p)
+      .reduce((list, id) => {
+        if (id && !list.some(p => getPluginName(p) === id)) list.push(id)
         return list
       }, [...(commonPlugins.length ? commonPlugins : zeroConfigPlugins)])
       .map(p =>
@@ -201,23 +211,31 @@ export class Bundler {
     })
 
     // default to compress (except as configure this option explicitly)
-    let enableMinimize = this.#options.compress !== false
-      && this.#options.minimize !== false
+    let minimizeEnabled = this.#options.minimize !== false
 
-    const { file } = outputOptions
-    if (file) {
-      // enable minimize by the default
-      if (minimize !== undefined) {
-        enableMinimize = !!(isArray(minimize) ? minimize[0] : minimize)
-      } else if (/\.min\./.test(basename(file))) {
+    if (minimizeEnabled) {
+      if (![inputPlugins, outputPlugins].some(
+        list => list.some(p => getPluginName(p) === 'minimize'),
+      )) {
+        const { file } = outputOptions
+
         // enable minimize when out file suffixed `*.min.*` pattern
-        enableMinimize = true
-      }
-    }
+        if (file && /\.min\./.test(basename(file))) {
+          minimizeEnabled = true
+        }
+        if (minimize !== undefined) {
+          minimizeEnabled = !!(isArray(minimize) ? minimize[0] : minimize)
+        }
 
-    // Add compress based on terser
-    if (enableMinimize) {
-      outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : null])
+        // Add compress based on terser
+        if (minimizeEnabled) {
+          outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : null])
+        }
+      }
+    } else {
+      [inputPlugins, outputPlugins].forEach(plugins => {
+        remove(plugins, o => getPluginName(o) === 'minimize')
+      })
     }
 
     // parse and init output plugins, exclude plugins in inputs
@@ -230,15 +248,10 @@ export class Bundler {
     // ```
     outputOptions.plugins = outputPlugins
       .reduce((arr, p) => {
-        const name = isString(p)
-          ? p
-          : isArray(p) // PluginWithOptions
-            ? p[0]
-            : isObject(p) && p.name
-              ? p.name : p
+        const name = getPluginName(p)
 
         // avoid duplicates plugins which in input.plugins already
-        if (name && !find(inputPlugins, (o: Plugin) => o === p || (name && (o === name || o.name === name)))) {
+        if (name && !find(inputPlugins, (o: Plugin) => o === p || (name && (getPluginName(o) === name)))) {
           arr.push(initPlugin(p, pluginCtx))
         }
 

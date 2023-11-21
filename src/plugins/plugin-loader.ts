@@ -9,7 +9,7 @@ import {
 } from '../types'
 
 import { builtinPlugins } from './builtin-plugins'
-import { getMergedOptions } from './default-options'
+import { normalizePluginOptions } from './default-options'
 
 type PluginDefinition = PluginImpl | Plugin
 type PluginSpec = PluginName | PluginDefinition | PluginWithOptions
@@ -46,10 +46,13 @@ const importPlugin = (name: string): PluginImpl | null => {
 }
 
 const loadPlugin = (name: string): PluginDefinition | null => {
+  if (!name) {
+    return null
+  }
+
   const plugin = hasOwn(builtinPlugins, name)
     ? builtinPlugins[name]!.impl()
     : importPlugin(name)
-
   if (!plugin) {
     throw new Error(`Cannot find plugin module '${name}`)
   }
@@ -62,26 +65,24 @@ const loadPlugin = (name: string): PluginDefinition | null => {
   return plugin
 }
 
-const getPluginOptions = (name: string, ctx?: PluginContext) => {
-  // #1 evaluate project localize settings
-  let opts = result(get(ctx, `options.plugins.${name}`, {}), ctx)
-
-  // #2 mixin builtin options if a builtin plugin
-  opts = getMergedOptions(name, opts, ctx)
-
-  // #3 mixin output localize overrides
-  const override = get(ctx, `output.plugins.${name}`)
-  if (override) {
-    merge(opts, override)
-  }
-
-  return opts
+const getPluginOptions = (name: string, options: Kv, ctx?: PluginContext) => {
+  const merged = merge(
+    {},
+    // #1 project common setting as bares
+    result(get(ctx, `options.plugins.${name}`, {}), ctx),
+    // #2 output distribute-level
+    ctx ? get(ctx, `output.plugins.${name}`) : {},
+    // #3 explit parameters
+    options,
+  )
+  // apply with builtin settings
+  return normalizePluginOptions<any>(name, merged, ctx)
 }
 
 /**
  * Get plugin constructor by name
  */
-export const getPluginCtor = (spec: PluginSpec, defaultOptions?: Record<string, unknown>): PluginDefinition => {
+export const getPluginCtor = (spec: PluginSpec, defaultOptions?: Record<string, unknown>): PluginDefinition | null => {
   let p: string | Plugin | PluginImpl
 
   // plugin with default options
@@ -104,7 +105,7 @@ export const getPluginCtor = (spec: PluginSpec, defaultOptions?: Record<string, 
 /**
  * Construct plugin by name
  */
-export const initPlugin = (p: PluginSpec, ctx?: PluginContext): Plugin => {
+export const initPlugin = (p: PluginSpec, ctx?: PluginContext): Plugin | null => {
   let name: string = ''
   let pluginOptions: GenericPluginOptions = {}
 
@@ -118,7 +119,7 @@ export const initPlugin = (p: PluginSpec, ctx?: PluginContext): Plugin => {
   }
 
   if (isString(name)) {
-    pluginOptions = merge({}, pluginOptions, getPluginOptions(name, ctx))
+    pluginOptions = getPluginOptions(name, pluginOptions, ctx)
   }
 
   return result(getPluginCtor(p || name, pluginOptions), {})

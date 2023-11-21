@@ -23,7 +23,7 @@ export function relativeId (id: string) {
 
 type Func<T> = ((...args: any[]) => T)
 
-export function result <T> (o: T | Func<T>, ...args: any[]) {
+export function result <T> (o: T | Func<T>, ...args: any[]): T {
   return typeof o === 'function' ? (o as Func<T>)(...args) : o
 }
 

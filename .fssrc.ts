@@ -57,7 +57,6 @@ const spec: BundlerOptions = {
     'url',
     'child_process'
   ],
-  minimize: process.env.NODE_ENV !== 'development',
   entry: [
     {
       input: {
@@ -66,7 +65,14 @@ const spec: BundlerOptions = {
       treeshake: {
         moduleSideEffects: false
       },
-      plugins: [ 'resolve', 'typescript', 'commonjs', progress ],
+      plugins: [
+        'resolve',
+        'typescript',
+        'commonjs',
+        progress(),
+        process.env.NODE_ENV !== 'development' ? ['minimize', { output: { beautify: true } }] : null,
+        addShebang(),
+      ],
       output: [
         {
           chunkFileNames: 'lib/[name].js',
@@ -75,9 +81,7 @@ const spec: BundlerOptions = {
           get banner() {
             return banner()
           },
-          plugins: [addShebang()],
           manualChunks: { 'bundler': ['src/index.ts'] },
-          minimize: [ 1, { output: { beautify: true } } ]
         }
       ]
     }
