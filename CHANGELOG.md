@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+### [2.1.1](https://github.com/allex/rollup-worker/compare/2.1.0...2.1.1) (2023-11-24)
+
+
+### Bug Fixes
+
+* add package with scripts dir ([ae3d85e](https://github.com/allex/rollup-worker/commit/ae3d85e5777722bb3edb758cd8821d5ebb709078))
+* add spec option "null" to disable plugin self ([1c353b4](https://github.com/allex/rollup-worker/commit/1c353b478dad5b31a2dee42cbfd335315f96a669))
+
 ## [2.1.0](https://github.com/allex/rollup-worker/compare/2.0.1...2.1.0) (2023-11-21)
 
 
