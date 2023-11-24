@@ -81,7 +81,7 @@ export async function loadAndParseConfigFile (
   return { options, warnings }
 }
 
-export async function loadConfigFile (configFile: string, commandOptions: Kv = {}): Promise<GenericConfigObject[]> {
+export async function loadConfigFile (configFile: string, commandOptions: Kv = {}): Promise<readonly GenericConfigObject[]> {
   const configFileExport = await getDefaultFromTranspiledConfigFile(configFile, commandOptions)
   return getConfigList(configFileExport, commandOptions)
 }
@@ -164,7 +164,7 @@ function loadConfigFromBundledFile (fileName: string, bundledCode: string): unkn
   }
 }
 
-async function getConfigList (configFileExport: any, commandOptions: any): Promise<any[]> {
+async function getConfigList (configFileExport: any, commandOptions: any): Promise<readonly any[]> {
   const config = await (typeof configFileExport === 'function'
     ? configFileExport(commandOptions)
     : configFileExport)

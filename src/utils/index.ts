@@ -94,7 +94,7 @@ export function printQuotedStringList (
   return output
 }
 
-export const asArray = <T>(o: T | T[]): T[] =>
+export const asArray = <T>(o: T | T[]): readonly T[] =>
   (Array.isArray(o) ? o : [o])
 
 const boolValues = {

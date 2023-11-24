@@ -308,12 +308,12 @@ export class Bundler {
 
     debug('normalized entries: \n%O', list)
 
-    let inputs: string[] = []
+    let inputs: readonly string[] = []
     const input = entry.input
     if (isObject(input)) {
       inputs = Object.values(input)
     } else {
-      inputs = asArray(input as Many<string>)
+      inputs = asArray(input)
     }
     const files = entry.output.map(o => {
       const dst = (o.file ?? o.dir) || ''
