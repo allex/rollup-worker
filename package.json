@@ -86,7 +86,8 @@
   ],
   "files": [
     "lib",
-    "bin"
+    "bin",
+    "scripts"
   ],
   "engines": {
     "node": ">=16"
