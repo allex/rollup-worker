@@ -19,7 +19,7 @@
   },
   "scripts": {
     "lint": "eslint . --ext ts",
-    "build": "rb -c && chmod a+x bin/cli.js",
+    "build": "export NODE_ENV='production' && rb -c && chmod a+x bin/cli.js",
     "watch": "export NODE_ENV='development' && rb -c -w",
     "test": "npm run lint",
     "postinstall": "scripts/postinstall"

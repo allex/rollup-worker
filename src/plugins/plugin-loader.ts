@@ -111,6 +111,11 @@ export const initPlugin = (p: PluginSpec, ctx?: PluginContext): Plugin | null =>
 
   if (isArray(p)) { // PluginWithOptions
     [p, pluginOptions] = p
+
+    // return null to disable the plugin if self-options value is NULL
+    if (pluginOptions === null) {
+      return null
+    }
   }
 
   if (isString(p)) {

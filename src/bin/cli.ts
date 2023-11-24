@@ -139,9 +139,16 @@ const runCli = async (): Promise<void> => {
   } else {
     // build
     const { options, warnings } = await loadAndParseConfigFile(configFile, commandOptions)
-    if (commandOptions.minimize !== undefined) {
+    if (commandOptions.minimize === undefined) {
+      // default to compress in production mode
+      if (process.env.NODE_ENV !== 'development') {
+        debug('enable compress in non-development by the default')
+        options.minimize = true
+      }
+    } else {
       options.minimize = commandOptions.minimize
     }
+
     await build(options, warnings)
   }
 }

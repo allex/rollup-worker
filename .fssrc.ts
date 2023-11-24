@@ -69,8 +69,9 @@ const spec: BundlerOptions = {
         'resolve',
         'typescript',
         'commonjs',
+        ['replace', null], // with `null` to disable the builtin `replace` plugin
         progress(),
-        process.env.NODE_ENV !== 'development' ? ['minimize', { output: { beautify: true } }] : null,
+        process.env.NODE_ENV !== 'development' ? ['minimize', { output: { beautify: false } }] : null,
         addShebang(),
       ],
       output: [

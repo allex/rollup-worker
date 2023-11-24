@@ -27,8 +27,8 @@ type BundlerExternalFunc = (
 type PluginWithOptions = [
   /** plugin name or plugin instance */
   PluginName | Plugin | PluginImpl,
-  /** plugin options */
-  GenericPluginOptions
+  /** plugin options, `null` to disable the plugin */
+  GenericPluginOptions | null
 ]
 
 interface BundlerInputOptions extends Omit<InputOptions, 'plugins' | 'external'> {

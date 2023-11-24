@@ -174,7 +174,7 @@ export class Bundler {
     // init plugins: merge with builtin and cleanup
     const inputPlugins = builtinPlugins
       .reduce((list, id) => {
-        if (id && !list.some(p => getPluginName(p) === id)) list.push(id)
+        if (!list.some(p => getPluginName(p) === id)) list.push(id)
         return list
       }, [...(commonPlugins.length ? commonPlugins : zeroConfigPlugins)])
       .map(p =>
@@ -210,8 +210,7 @@ export class Bundler {
       }
     })
 
-    // default to compress (except as configure this option explicitly)
-    let minimizeEnabled = this.#options.minimize !== false
+    let minimizeEnabled = !!this.#options.minimize
 
     if (minimizeEnabled) {
       if (![inputPlugins, outputPlugins].some(
@@ -229,7 +228,7 @@ export class Bundler {
 
         // Add compress based on terser
         if (minimizeEnabled) {
-          outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : null])
+          outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : undefined])
         }
       }
     } else {
