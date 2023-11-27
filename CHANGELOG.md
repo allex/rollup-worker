@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+### [2.1.2](https://github.com/allex/rollup-worker/compare/2.1.1...2.1.2) (2023-11-27)
+
+
+### Bug Fixes
+
+* add tsc useDefineForClassFields default false ([c5060d5](https://github.com/allex/rollup-worker/commit/c5060d53813510ef3abeeab712e176dcc94e21dc))
+
 ### [2.1.1](https://github.com/allex/rollup-worker/compare/2.1.0...2.1.1) (2023-11-24)
 
 
