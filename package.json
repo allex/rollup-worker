@@ -22,6 +22,7 @@
     "build": "export NODE_ENV='production' && rb -c && chmod a+x bin/cli.js",
     "watch": "export NODE_ENV='development' && rb -c -w",
     "test": "npm run lint",
+    "prepare": "if [ ! -d 'lib' ]; then yarn build; fi",
     "postinstall": "scripts/postinstall"
   },
   "author": "allex <allex.wxn@gmail.com> (http://iallex.com/)",
@@ -86,6 +87,7 @@
   ],
   "files": [
     "lib",
+    "!lib/**/*.map",
     "bin",
     "scripts"
   ],

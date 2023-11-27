@@ -79,42 +79,45 @@ export default () =>
             {
               name: '@babel/plugin-syntax-import-meta',
             },
-            !customOptions.jsxImportSource && !customOptions.vue && {
-              name: '@babel/plugin-transform-react-jsx',
-              pragma: customOptions.pragma || 'h',
-              pragmaFrag: customOptions.pragmaFrag || 'Fragment',
-            },
-            !customOptions.typescript && {
-              name: '@babel/plugin-transform-flow-strip-types',
-            },
-            isTruthy(customOptions.defines) && {
-              name: 'babel-plugin-transform-replace-expressions',
-              replace: customOptions.defines,
-            },
-            !customOptions.modern
-            && !isNodeTarget && {
-              name: 'babel-plugin-transform-async-to-promises',
-              inlineHelpers: true,
-              externalHelpers: false,
-              minify: true,
-            },
-            !customOptions.modern
-            && !isNodeTarget && {
-              value: [
-                transformFastRest,
-                {
-                  // Use inline [].slice.call(arguments)
-                  helper: false,
-                  literal: true,
-                },
-                'transform-fast-rest',
-              ],
-            },
-            !customOptions.modern
-            && !isNodeTarget && {
-              name: '@babel/plugin-transform-regenerator',
-              async: false,
-            },
+            !customOptions.jsxImportSource && !customOptions.vue
+              && {
+                name: '@babel/plugin-transform-react-jsx',
+                pragma: customOptions.pragma || 'h',
+                pragmaFrag: customOptions.pragmaFrag || 'Fragment',
+              },
+            !customOptions.typescript
+              && {
+                name: '@babel/plugin-transform-flow-strip-types',
+              },
+            isTruthy(customOptions.defines)
+              && {
+                name: 'babel-plugin-transform-replace-expressions',
+                replace: customOptions.defines,
+              },
+            !customOptions.modern && !isNodeTarget
+              && {
+                name: 'babel-plugin-transform-async-to-promises',
+                inlineHelpers: true,
+                externalHelpers: false,
+                minify: true,
+              },
+            !customOptions.modern && !isNodeTarget
+              && {
+                value: [
+                  transformFastRest,
+                  {
+                    // Use inline [].slice.call(arguments)
+                    helper: false,
+                    literal: true,
+                  },
+                  'transform-fast-rest',
+                ],
+              },
+            !customOptions.modern && !isNodeTarget
+              && {
+                name: '@babel/plugin-transform-regenerator',
+                async: false,
+              },
             {
               name: 'babel-plugin-macros',
             },

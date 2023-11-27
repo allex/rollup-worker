@@ -88,16 +88,19 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
 
   typescript (o, ctx) {
     const { input, options } = ctx ?? {}
+    if (options?.autoTsconfig && !o.tsconfig && typeof input === 'string') {
+      o.tsconfig = findTsConfig({ cwd: dirname(input) })
+    }
     const spec = merge({
       compilerOptions: {
         sourceMap: options?.sourcemap,
         target: 'esnext',
         newLine: 'lf',
+        // true if target is ES2022 or higher, including ESNext; false otherwise.
+        //  <https://www.typescriptlang.org/tsconfig#useDefineForClassFields>
+        useDefineForClassFields: false,
       },
     }, o)
-    if (options?.autoTsconfig && !o.tsconfig && typeof input === 'string') {
-      o.tsconfig = findTsConfig({ cwd: dirname(input) })
-    }
     return spec
   },
 
