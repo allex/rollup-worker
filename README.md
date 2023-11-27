@@ -23,7 +23,7 @@ $ rb [ -c .fssrc.js ]
 cat .fssrc.js
 
 ```js
-const { version, name, author, dependencies } = require('./package.json')
+const { version, name, author } = require('./package.json')
 const banner = `/*! ${name} v${version} | ${license || 'MIT'} licensed. | by ${author} */`
 
 // Optional enable some builtin plugins
@@ -38,36 +38,38 @@ const plugins = [
 
 module.exports = {
   plugins: {
-    babel ({ output: { format } }) {
-      const babelrc = {}
+    babel (opts, { output: { format } }) {
+      const babelrc = { ...opts }
       if ([ 'es', 'cjs' ].includes(format)) {
         babelrc.comments = true
       }
       return babelrc
     },
-    resolve ({ output: { format } }) {
+    resolve (opts, { output: { format } }) {
       return {
+        ...opts,
         preferBuiltins: false,
         customResolveOptions: {
-          moduleDirectory: /min|umd|iife/.test(format) ? [ 'src', 'node_modules' ] : [ 'src' ]
+          moduleDirectory: /min|umd|iife/.test(format) ? [ 'node_modules' ] : [ 'src' ]
         }
       }
     },
-    typescript (rollupCfg) {
+    typescript (opts) {
       return { 
         typescript: require('@allex/typescript'), // custom tsc engine
-        tsconfigOverride: {
-          compilerOptions: {
-            newLine: "lf"
-          }
+        compilerOptions: {
+          newLine: "lf"
         }
       }
     },
-    globals ({ output }) {
-      return output.format === 'es' ? {
-        process: false,
-        buffer: false
-      } : {}
+    globals (opts, { output }) {
+      return {
+        ...opts,
+        ...(output.format === 'es' ? {
+          process: false,
+          buffer: false
+        } : {})
+      }
     },
     minimize: { // for terser
       ie8: false
@@ -80,6 +82,9 @@ module.exports = {
     {
       input: './src/worker/index.ts',
       plugins,
+      external: (id, pid, isResolved, next) => {
+        return id ==== 'foo' || next(id, true)
+      },
       output: [
         { format: 'es', file: 'worker.esm.js' },
         { format: 'umd', file: 'worker.js', name: 'FooWorker', banner }
@@ -87,7 +92,10 @@ module.exports = {
     },
     {
       input: './src/app/main.ts',
-      plugins,
+      plugins: [
+        ...plugins, 
+        ['minimize', { output: { beautify: true } }]
+      ],
       output: [
         { format: 'iife', compress: true, file: 'app/main.js', banner }
       ]
