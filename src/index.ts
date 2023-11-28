@@ -210,26 +210,26 @@ export class Bundler {
       }
     })
 
-    let minimizeEnabled = !!this.#options.minimize
+    const cliMinimizeFlg = this.#options.minimize
+    let minimizeEnabled = !!cliMinimizeFlg
+
+    // ensure the cli-opt as top-level priority
+    if (cliMinimizeFlg === undefined) {
+      const { file } = outputOptions
+      // enable minimize when out file suffixed `*.min.*` pattern
+      if (file && /\.min\./.test(basename(file))) {
+        minimizeEnabled = true
+      }
+      if (minimize !== undefined) {
+        minimizeEnabled = !!(isArray(minimize) ? minimize[0] : minimize)
+      }
+    }
 
     if (minimizeEnabled) {
       if (![inputPlugins, outputPlugins].some(
         list => list.some(p => getPluginName(p) === 'minimize'),
       )) {
-        const { file } = outputOptions
-
-        // enable minimize when out file suffixed `*.min.*` pattern
-        if (file && /\.min\./.test(basename(file))) {
-          minimizeEnabled = true
-        }
-        if (minimize !== undefined) {
-          minimizeEnabled = !!(isArray(minimize) ? minimize[0] : minimize)
-        }
-
-        // Add compress based on terser
-        if (minimizeEnabled) {
-          outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : undefined])
-        }
+        outputPlugins.push(['minimize', isArray(minimize) ? minimize[1] : undefined])
       }
     } else {
       [inputPlugins, outputPlugins].forEach(plugins => {
