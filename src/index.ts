@@ -21,6 +21,7 @@ import rollup, {
   Plugin,
   PluginImpl,
   RollupBuild,
+  RollupWarning,
   RollupWatchOptions,
   WatcherOptions,
 } from 'rollup'
@@ -56,6 +57,11 @@ const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
 
 // some builtin plugins
 const builtinPlugins = ['json', 'replace']
+
+const defaultOnWarn = (warning: RollupWarning) =>
+  console.warn(`[WARN] ${warning.message || warning}${warning.loc
+    ? ` (${relativeId(warning.loc.file)}:${warning.loc.line}:${warning.loc.column})`
+    : ''}`)
 
 const getPluginName = (p: string | Plugin | PluginImpl | PluginWithOptions): string | undefined => {
   const name = isString(p)
@@ -182,6 +188,7 @@ export class Bundler {
       .filter(Boolean)
 
     const inputOptions: InputOptions = {
+      onwarn: defaultOnWarn,
       ...inputRest,
       plugins: inputPlugins,
       external: this.proxyExternal(customExternalFunc, inputRest),
