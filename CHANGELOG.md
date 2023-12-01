@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-### [2.1.2](https://github.com/allex/rollup-worker/compare/2.1.1...2.1.2) (2023-11-27)
+### [2.1.3](https://github.com/allex/rollup-worker/compare/2.1.2...2.1.3) (2023-12-01)
+
+
+### Bug Fixes
+
+* add default onwarn func ([4cec5d3](https://github.com/allex/rollup-worker/commit/4cec5d3d4792987467024edbf08f17cb6dff1d7d))
+* enable output.minimize and make the cli-opt as top-level priority ([40e4de3](https://github.com/allex/rollup-worker/commit/40e4de30482ea0cdae48a78322232b0402cf46ea))
+
+### [2.1.2](https://github.com/allex/rollup-worker/compare/2.1.1...2.1.2) (2023-11-28)
 
 
 ### Bug Fixes

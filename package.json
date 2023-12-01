@@ -1,6 +1,6 @@
 {
   "name": "rollup-worker",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Rollup worker for multiple entry bundle with customize distributes.",
   "repository": "allex/rollup-worker",
   "keywords": [
