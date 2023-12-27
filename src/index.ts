@@ -220,8 +220,8 @@ export class Bundler {
     const cliMinimizeFlg = this.#options.minimize
     let minimizeEnabled = !!cliMinimizeFlg
 
-    // ensure the cli-opt as top-level priority
-    if (cliMinimizeFlg === undefined) {
+    // output.minimize with the top level priority
+    if (cliMinimizeFlg === undefined || minimize !== undefined) {
       const { file } = outputOptions
       // enable minimize when out file suffixed `*.min.*` pattern
       if (file && /\.min\./.test(basename(file))) {

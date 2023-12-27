@@ -64,7 +64,7 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
       custom: {
         defines,
         modern,
-        compress: !!options.minimize,
+        compress: !!output.minimize,
         sourcemap: options.sourcemap,
         targets: options.target === 'node' ? { node: '8' } : undefined,
         pragma: options.jsx || 'h',
