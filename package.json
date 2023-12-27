@@ -49,7 +49,7 @@
     "colorette": "^2.0.20",
     "cssnano": "^6",
     "debug": "^3.1.0",
-    "postcss": "^8.x",
+    "postcss": "^8.4.31",
     "resolve-from": "^5.0.0",
     "rollup": "^2",
     "rollup-plugin-json5": "^1",
