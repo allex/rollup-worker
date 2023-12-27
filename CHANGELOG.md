@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+### [2.1.4](https://github.com/allex/rollup-worker/compare/2.1.3...2.1.4) (2023-12-27)
+
+
+### Bug Fixes
+
+* babel compress conflict with minimize plugin ([66a9b52](https://github.com/allex/rollup-worker/commit/66a9b52353790e49bb965c0dc7f9dc1b5e175f17))
+
 ### [2.1.3](https://github.com/allex/rollup-worker/compare/2.1.2...2.1.3) (2023-12-01)
 
 
