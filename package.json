@@ -60,6 +60,7 @@
     "typescript": "^5"
   },
   "devDependencies": {
+    "@fdio/eslint-plugin": "^2",
     "@fdio/utils": "^1",
     "@types/node": "^20.9.0",
     "@typescript-eslint/eslint-plugin": "^6.11.0",
@@ -67,7 +68,7 @@
     "ansi-escapes": "^3.1.0",
     "babel-plugin-alter-object-assign": "^1.0.2",
     "date-time": "^2.1.0",
-    "eslint": "^8.53.0",
+    "eslint": "^8",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.29.0",
     "magic-string": "^0.30.5",

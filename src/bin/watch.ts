@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-misused-promises */
 import { promises as fs, type FSWatcher } from 'fs'
 
 import dateTime from 'date-time'
@@ -62,7 +63,7 @@ export async function watch (configFile: string, command: Kv): Promise<void> {
         if (watcher) {
           await watcher.close()
         }
-        start(options, warnings)
+        void start(options, warnings)
       } catch (err: any) {
         handleError(err, true)
       }

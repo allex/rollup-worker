@@ -151,10 +151,12 @@ const defaultPluginOpts: Kv<PluginOptionsResolver> = {
       options: merge({
         ie8: true,
         compress: {
+          // eslint-disable-next-line camelcase
           drop_console: !(format === 'cjs' || format === 'es'),
         },
         output: {
           shebang: true,
+          // eslint-disable-next-line camelcase
           indent_level: 2,
         },
         module: modern || format === 'cjs' || format === 'es',

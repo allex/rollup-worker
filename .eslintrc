@@ -1,107 +1,29 @@
 {
   "root": true,
   "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended",
-    "airbnb-base"
+    "airbnb-base",
+    "plugin:@fdio/typescript"
   ],
-  "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": ["./tsconfig.json"]
   },
-  "plugins": [
-    "@typescript-eslint"
-  ],
-  "settings": {
-    // https://github.com/benmosher/eslint-plugin-import
-    "import/extensions": [".js", ".jsx", ".ts", ".tsx", ".d.ts", ".vue"],
-    "import/parsers": {
-      "@typescript-eslint/parser": [".ts", ".tsx", ".d.ts"],
-    },
-    "import/resolver": {
-      "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx", ".d.ts", ".vue"],
-      }
-    }
-  },
   "env": {
-    "browser": true,
     "node": true,
     "es6": true
   },
   "rules": {
-    "arrow-parens": 0,
-    "arrow-body-style": 0,
-    "consistent-return": ["error", { "treatUndefinedAsUnspecified": true }],
-    "func-names": ["error", "never"],
-
-    "implicit-arrow-linebreak": 0,
-
-    "max-len": [1, { "code": 150, "ignoreTemplateLiterals": true }],
-    "no-cond-assign": 0,
-    "no-floating-decimal": 0,
-    "no-sequences": 0,
-    "no-shadow": 0,
-    "no-plusplus": 0,
-    "no-param-reassign": 0,
-    "no-return-assign": 0,
-    "no-bitwise": 0,
-    "no-nested-ternary": 0,
-    "no-multi-assign": 0,
-    "no-continue": 0,
-
-    "prefer-destructuring": 0,
-    "semi": [2, "never", { "beforeStatementContinuationChars": "always" }],
-    "semi-style": 0,
-    "space-before-function-paren": [1, {
-      "anonymous": "always",
-      "named": "always",
-      "asyncArrow": "always"
-    }],
-
-    "import/extensions": [
-      2,
-      "ignorePackages",
-      { "js": "never", "ts": "never" }
-    ],
-    "import/named": 0,
-    "import/order": [
+    // require trailing commas in multiline object literals
+    "comma-dangle": [
       2,
       {
-        "newlines-between": "always",
-        "pathGroups": [
-          {
-            "pattern": "@/**",
-            "group": "external",
-            "position": "after"
-          }
-        ]
+        "arrays": "always-multiline",
+        "objects": "always-multiline",
+        "imports": "always-multiline",
+        "exports": "always-multiline",
+        "functions": "always-multiline",
       }
     ],
-    "import/prefer-default-export": 0,
-
-    // note you must disable the base rule as it can report incorrect errors
-    "no-unused-vars": 0,
-    "@typescript-eslint/no-unused-vars": [1, {
-      "vars": "local",
-      "args": "none",
-      "ignoreRestSiblings": true,
-      "caughtErrors": "none",
-      "varsIgnorePattern": "^_"
-    }],
-
-    "no-use-before-define": 0,
-    "@typescript-eslint/no-use-before-define": [2, {
-      "functions": false,
-      "classes": true,
-      "variables": true,
-      "allowNamedExports": true,
-      "enums": true,
-      "typedefs": false,
-      "ignoreTypeReferences": true,
-    }],
-
-    "@typescript-eslint/no-explicit-any": 0
+    "@typescript-eslint/no-unsafe-return": 0,
   },
   "overrides": [
     {

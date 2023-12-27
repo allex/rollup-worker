@@ -11,11 +11,11 @@ export const stderr = (...args: readonly unknown[]) =>
   process.stderr.write(`${args.join('')}\n`)
 
 export function handleError (err: RollupError, recover = false): void {
-  let description = err.message || err
+  let description = err.message || err as unknown as string
   if (err.name) description = `${err.name}: ${description}`
   const message = (err.plugin ? `(plugin ${err.plugin}) ${description}` : description) || err
 
-  stderr(bold(red(`[!] ${bold(message.toString())}`)))
+  stderr(bold(red(`[!] ${bold((message as Error).toString())}`)))
 
   if (err.url) {
     stderr(cyan(err.url))

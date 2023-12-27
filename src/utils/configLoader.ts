@@ -18,20 +18,20 @@ interface ILoader {
 }
 
 export class ConfigLoader {
-  options: ConfigLoaderOptions
+  options: ConfigLoaderOptions;
 
   // cache file exists state
-  existsCache = new Map<string, boolean>()
+  existsCache = new Map<string, boolean>();
 
   // cache loader for localize transform
-  loaders = new Set<ILoader>()
+  loaders = new Set<ILoader>();
 
   /**
    * We need to read package json data in `.resolve` method to check if `packageKey` exists in the file
    * So it makes sense to cache it if the `.resolve` method is called by `.load` method
    * @type {Set<string, any>}
    */
-  pkgCache = new Map<string, any>()
+  pkgCache = new Map<string, any>();
 
   constructor ({
     files,

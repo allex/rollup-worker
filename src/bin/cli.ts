@@ -153,7 +153,7 @@ const runCli = async (): Promise<void> => {
   }
 }
 
-;(async () => {
+void (async () => {
   try {
     await runCli()
   } catch (e) {

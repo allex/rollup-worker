@@ -20,7 +20,7 @@ const immediateHandlers: {
 
     stderr(
       `Creating a browser bundle that depends on ${printQuotedStringList(
-        warning.modules!,
+        warning.modules,
       )}. You might need to include https://github.com/FredKSchott/rollup-plugin-polyfill-node`,
     )
   },
@@ -38,7 +38,7 @@ const deferredHandlers: {
     title(`Circular dependenc${warnings.length > 1 ? 'ies' : 'y'}`)
     const displayed = warnings.length > 5 ? warnings.slice(0, 3) : warnings
     for (const warning of displayed) {
-      stderr(warning.cycle!.join(' -> '))
+      stderr(warning.cycle.join(' -> '))
     }
     if (warnings.length > displayed.length) {
       stderr(`...and ${warnings.length - displayed.length} more`)
@@ -51,7 +51,7 @@ const deferredHandlers: {
         warnings.length > 1 ? 'chunks' : 'chunk'
       }`,
     )
-    stderr(warnings.map(warning => warning.chunkName!).join(', '))
+    stderr(warnings.map(warning => warning.chunkName).join(', '))
   },
 
   EVAL (warnings) {
@@ -65,9 +65,9 @@ const deferredHandlers: {
     info('https://rollupjs.org/guide/en/#error-name-is-not-exported-by-module')
 
     for (const warning of warnings) {
-      stderr(bold(warning.importer!))
+      stderr(bold(warning.importer))
       stderr(`${warning.missing} is not exported by ${warning.exporter}`)
-      stderr(gray(warning.frame!))
+      stderr(gray(warning.frame))
     }
   },
 
@@ -77,7 +77,7 @@ const deferredHandlers: {
       'Use output.globals to specify browser global variable names corresponding to external modules',
     )
     for (const warning of warnings) {
-      stderr(`${bold(warning.source!)} (guessing '${warning.guess}')`)
+      stderr(`${bold(warning.source)} (guessing '${warning.guess}')`)
     }
   },
 
@@ -85,10 +85,10 @@ const deferredHandlers: {
     title('Mixing named and default exports')
     info('https://rollupjs.org/guide/en/#outputexports')
     stderr(bold('The following entry modules are using named and default exports together:'))
-    warnings.sort((a, b) => (a.id! < b.id! ? -1 : 1))
+    warnings.sort((a, b) => (a.id < b.id ? -1 : 1))
     const displayedWarnings = warnings.length > 5 ? warnings.slice(0, 3) : warnings
     for (const warning of displayedWarnings) {
-      stderr(relativeId(warning.id!))
+      stderr(relativeId(warning.id))
     }
     if (displayedWarnings.length < warnings.length) {
       stderr(`...and ${warnings.length - displayedWarnings.length} other entry modules`)
@@ -101,10 +101,10 @@ const deferredHandlers: {
     title('Conflicting re-exports')
     for (const warning of warnings) {
       stderr(
-        `"${bold(relativeId(warning.reexporter!))}" re-exports "${
+        `"${bold(relativeId(warning.reexporter))}" re-exports "${
           warning.name
-        }" from both "${relativeId(warning.sources![0])}" and "${relativeId(
-          warning.sources![1],
+        }" from both "${relativeId(warning.sources[0])}" and "${relativeId(
+          warning.sources[1],
         )}" (will be ignored)`,
       )
     }
@@ -166,7 +166,7 @@ const deferredHandlers: {
 
     const dependencies = new Map<string, string[]>()
     for (const warning of warnings) {
-      getOrCreate(dependencies, warning.source, () => []).push(warning.importer!)
+      getOrCreate(dependencies, warning.source, () => []).push(warning.importer)
     }
 
     for (const [dependency, importers] of dependencies) {
@@ -178,11 +178,7 @@ const deferredHandlers: {
     title('Unused external imports')
     for (const warning of warnings) {
       stderr(
-        `${warning.names
-        } imported from external module "${
-          warning.source
-        }" but never used in ${
-          printQuotedStringList(warning.sources!.map(id => relativeId(id)))}`,
+        `${warning.names.join(',')} imported from external module "${warning.source}" but never used in ${printQuotedStringList(warning.sources.map(id => relativeId(id)))}`,
       )
     }
   },
@@ -226,7 +222,7 @@ function showTruncatedWarnings (warnings: readonly RollupWarning[]): void {
   const displayedByModule = nestedByModule.length > 5 ? nestedByModule.slice(0, 3) : nestedByModule
   for (const { key: id, items } of displayedByModule) {
     stderr(bold(relativeId(id)))
-    stderr(gray(items[0].frame!))
+    stderr(gray(items[0].frame))
 
     if (items.length > 1) {
       stderr(`...and ${items.length - 1} other ${items.length > 2 ? 'occurrences' : 'occurrence'}`)
@@ -248,10 +244,10 @@ export default function batchWarnings (): BatchWarnings {
       count += 1
       warningOccurred = true
 
-      if (warning.code! in deferredHandlers) {
-        getOrCreate(deferredWarnings, warning.code!, () => []).push(warning)
-      } else if (warning.code! in immediateHandlers) {
-        immediateHandlers[warning.code!](warning)
+      if (warning.code in deferredHandlers) {
+        getOrCreate(deferredWarnings, warning.code, () => []).push(warning)
+      } else if (warning.code in immediateHandlers) {
+        immediateHandlers[warning.code](warning)
       } else {
         title(warning.message)
 

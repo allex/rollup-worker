@@ -6,7 +6,7 @@ interface GenericConfigObject {
  [key: string]: unknown;
 }
 
-type RollupExternalPredicate = (source: string, importer: string | undefined, isResolved: boolean) => boolean | null | void;
+type RollupExternalPredicate = (source: string, importer: string | undefined, isResolved: boolean) => boolean | null | void
 
 interface Plugin extends OutputPlugin, Partial<PluginHooks> {
   // for inter-plugin communication
@@ -57,7 +57,7 @@ interface BundlerEntry extends BundlerInputOptions {
 }
 
 type PluginOptions<T = GenericPluginOptions> = {
-  [plugin: string]: T | (() => T)
+  [plugin: string]: T | (() => T);
 }
 
 interface PluginContext {

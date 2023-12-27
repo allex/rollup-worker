@@ -59,7 +59,7 @@ const zeroConfigPlugins = ['babel', 'resolve', 'commonjs']
 const builtinPlugins = ['json', 'replace']
 
 const defaultOnWarn = (warning: RollupWarning) =>
-  console.warn(`[WARN] ${warning.message || warning}${warning.loc
+  console.warn(`[WARN] ${warning.message}${warning.loc
     ? ` (${relativeId(warning.loc.file)}:${warning.loc.line}:${warning.loc.column})`
     : ''}`)
 
@@ -74,12 +74,12 @@ const getPluginName = (p: string | Plugin | PluginImpl | PluginWithOptions): str
 }
 
 export class Bundler {
-  #options: NormalizedBundlerOptions
+  #options: NormalizedBundlerOptions;
 
   /**
    * Internal directory for external predicate
    */
-  #externalMap: Map<string, boolean>
+  #externalMap: Map<string, boolean>;
 
   /**
    * Multi-entry config for rollup bundle
@@ -120,8 +120,8 @@ export class Bundler {
       const { dependencies, devDependencies, peerDependencies } = pkg.data
 
       // Auto detect [vue, react] by parse package dependencies
-      const deps = Object.keys({ ...dependencies, ...devDependencies })
-        ;['vue', 'react'].forEach(k => {
+      const deps = Object.keys({ ...dependencies, ...devDependencies });
+      ['vue', 'react'].forEach(k => {
         if (!options[k] == null) {
           options[k] = deps.some(k =>
             new RegExp(`\b${k}\b`).test(k))
@@ -262,7 +262,7 @@ export class Bundler {
         }
 
         return arr
-      }, [])
+      }, [] as rollup.Plugin[])
       .map(p =>
         initPlugin(p, pluginCtx))
       .filter(Boolean)
@@ -366,7 +366,7 @@ export class Bundler {
       this.buildEntry(o, warnings))
   }
 
-  async watch (options?: WatcherOptions) {
+  async watch (options?: WatcherOptions): Promise<rollup.RollupWatcher> {
     const watchOptions: RollupWatchOptions[] = []
 
     this.#options.entry.forEach(entry => {
@@ -376,6 +376,6 @@ export class Bundler {
       })
     })
 
-    return rollup.watch(watchOptions)
+    return Promise.resolve(rollup.watch(watchOptions))
   }
 }

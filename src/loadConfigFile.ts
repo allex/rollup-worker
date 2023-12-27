@@ -164,7 +164,7 @@ function loadConfigFromBundledFile (fileName: string, bundledCode: string): unkn
   }
 }
 
-async function getConfigList (configFileExport: any, commandOptions: any): Promise<readonly any[]> {
+async function getConfigList (configFileExport: any, commandOptions: any): Promise<readonly GenericConfigObject[]> {
   const config = await (typeof configFileExport === 'function'
     ? configFileExport(commandOptions)
     : configFileExport)
@@ -174,5 +174,5 @@ async function getConfigList (configFileExport: any, commandOptions: any): Promi
       message: 'Config file must export an options object, or an array of options objects',
     })
   }
-  return asArray(config)
+  return asArray<GenericConfigObject>(config)
 }
